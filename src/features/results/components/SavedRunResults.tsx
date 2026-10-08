@@ -1,3 +1,4 @@
+import { TrainingOverview } from "@/features/results/components/TrainingOverview";
 import { useId, useState } from "react";
 import { endpoints } from "@/api/endpoints";
 import type { SavedRunDetail } from "@/api/studioTypes";
@@ -28,7 +29,7 @@ export function SavedRunResults({
   );
   const [tab, setTab] = useState("Results");
   const tabId = useId();
-  const tabs = ["Results", "Dataset distribution", "Epoch details"];
+  const tabs = ["Overview", "Results", "Dataset distribution", "Epoch details"];
   const [split, setSplit] = useState("");
   const [artifactId, setArtifactId] = useState("");
   const data = detail.data;
@@ -114,7 +115,13 @@ export function SavedRunResults({
             id={`${tabId}-panel`}
             aria-labelledby={`${tabId}-${tabs.indexOf(tab)}`}
           >
-            {tab === "Dataset distribution" ? (
+            {tab === "Overview" ? (
+              <TrainingOverview
+                directory={data.run.directory}
+                history={data.history}
+                revision={revision}
+              />
+            ) : tab === "Dataset distribution" ? (
               <DatasetDistribution runId={selected} revision={revision} />
             ) : tab === "Epoch details" ? (
               <EpochDetails

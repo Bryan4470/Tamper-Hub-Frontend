@@ -75,6 +75,8 @@ export const endpoints = {
   models: resource("/models"),
   training: {
     ...resource("/training-runs"),
+    overview: (path: string) =>
+      `/training-overview?${new URLSearchParams({ path })}`,
     configs: "/training/configs",
     validate: "/training/validate",
     import: "/training-runs/import",

@@ -1632,6 +1632,7 @@ test("saved results epoch tab switches checkpoints and splits without changing t
   await openPage(page, "Saved results");
   await page.getByRole("button", { name: /Epoch navigation run/ }).click();
   await expect(page.getByRole("tab")).toHaveText([
+    "Overview",
     "Results",
     "Dataset distribution",
     "Epoch details",

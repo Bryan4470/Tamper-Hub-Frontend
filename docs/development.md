@@ -371,3 +371,30 @@ Grad-CAM's Input source also includes **Upload image folder**, reusing
 `endpoints.gradcam.uploads`. Folder selection preserves subfolders and skips
 non-image files. The Grad-CAM image limit continues to apply; changing sources
 clears selected files. Existing single-image uploads keep their endpoint.
+
+### Saved training Overview
+
+Saved training runs include an Overview tab alongside Results, Dataset
+distribution, and Epoch details. The existing default Results tab is retained.
+`TrainingOverview` uses the shared client and `endpoints.training.overview`
+to read the Python backend's summary of the selected run folder. It shows
+completed/configured epochs, model/training settings, saved split counts,
+recorded stage totals, per-epoch/test timings, recorded timestamps, and loss
+curves. Missing values are explicit and the UI distinguishes stage time from
+elapsed wall time. The endpoint reuses the original Training Studio readers;
+no browser-side reconstruction from file modification dates is performed.
+Browser coverage is in `tests/training-overview.spec.ts`.
+
+## Container deployment
+
+The frontend `Dockerfile` has a `web` target (production Vite build served by
+Nginx) and a `reader` target (standalone Node saved-results service). Nginx routes
+`/api/` to the API and `/studio-api/` to the reader, preserving the Host header
+and bearer authentication. Uploads permit 520 MiB including multipart overhead.
+The reader accepts `TAMPER_STUDIO_HOST` (local default `127.0.0.1`, container
+`0.0.0.0`) and exposes `/healthz` for readiness checks.
+
+The complete stack is defined in `../face-tamper-multiclass/compose.hub.yaml`;
+GPU access is an optional override. Follow
+[the Docker deployment guide](../../face-tamper-multiclass/README_DOCKER.md).
+Local `npm run dev` still uses the Vite proxy and middleware as before.
