@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "training-wizard": {
+      "targetKind": "existing-ui",
+      "projectId": "db5b481a-2a9a-4d29-9937-3bf38f413055",
+      "baselineDraftId": "af0de19d-fe75-4eb4-81ce-561b3fa76628",
+      "activeDraftId": "af0de19d-fe75-4eb4-81ce-561b3fa76628",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "src/features/training/components/TrainingForm.tsx",
+        "src/features/datasets/components/DatasetSourceBrowser.tsx",
+        "src/components/ui/Field.tsx",
+        "src/styles/global.css:717:780",
+        "src/styles/global.css:850:900",
+        "src/styles/global.css:1015:1070",
+        "src/styles/global.css:1645:1655",
+        "src/styles/global.css:1925:2015"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "dc16c405affc1dd01acd46871238ca19c1f99381bb046bb4ecb87cb481fe9725",
+        "src/features/training/components/TrainingForm.tsx": "e45551677e92be18be7c35377825455122f66cdcf3892c0919cdc002ceb42d91",
+        "src/features/datasets/components/DatasetSourceBrowser.tsx": "aed34aeed399010af2c1b45f650388142ddd4e9e534740132e74e15c87e0f815",
+        "src/components/ui/Field.tsx": "43540d691beed94ff0a72cdda7ccf40389c450db2f57a0bc5b828b6f4e2c2b27",
+        "src/styles/global.css": "51bfabdb162ff338112618b9499ca49fde5f62db5da7ff1111f417011705eb41"
+      },
+      "drafts": {
+        "af0de19d-fe75-4eb4-81ce-561b3fa76628": {
+          "title": "Tamper Hub - Training Configuration Redesign",
+          "visualDirection": "config-default datasets, custom CSV mode, grouped common training controls",
+          "currentVersion": 2
+        }
+      },
+      "updatedAt": "2026-09-28T02:20:00Z"
+    }
+  }
+}
