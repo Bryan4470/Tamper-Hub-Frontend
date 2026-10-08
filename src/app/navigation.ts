@@ -4,6 +4,7 @@ export const navigation: [PageName, string, string][] = [
   ["overview", "Home", "◫"],
   ["training", "Training", "↗"],
   ["inference", "Inference", "◎"],
+  ["gradcam", "Grad-CAM", "◉"],
   ["results", "Saved results", "▤"],
   ["evaluation", "Evaluation", "⌁"],
   ["comparison", "Comparison", "⇄"],
@@ -12,6 +13,10 @@ export const navigation: [PageName, string, string][] = [
   ["jobs", "Job monitor", "≡"],
 ];
 export const titles: Record<PageName, [string, string]> = {
+  gradcam: [
+    "Grad-CAM visualization",
+    "Explore the image regions contributing to each class decision.",
+  ],
   models: [
     "Model registry",
     "Register checkpoints, then choose a model for inference.",

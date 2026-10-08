@@ -26,6 +26,7 @@ export function JobDetails(
   );
 
   const resultPage: Record<string, PageName> = {
+    gradcam: "gradcam",
     training: "training",
     inference: "inference",
     evaluation: "evaluation",

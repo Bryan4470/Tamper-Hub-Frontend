@@ -12,7 +12,9 @@ import { InferenceReport } from "@/features/inference/components/InferenceReport
 import { SavedRunResults } from "@/features/results/components/SavedRunResults";
 import { useRemote } from "@/hooks/useRemote";
 
-export function SavedResultsPage(props: Pick<HubProps, "revision" | "act">) {
+export function SavedResultsPage(
+  props: Pick<HubProps, "revision" | "act" | "go">,
+) {
   const [selected, setSelected] = useState("");
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState("");
@@ -154,6 +156,7 @@ export function SavedResultsPage(props: Pick<HubProps, "revision" | "act">) {
         {selectedRun?.inference_id ? (
           <Card title={selectedRun.name}>
             <InferenceReport
+              go={props.go}
               source={{ runId: selectedRun.inference_id }}
               act={props.act}
               revision={props.revision + refresh}
@@ -161,6 +164,7 @@ export function SavedResultsPage(props: Pick<HubProps, "revision" | "act">) {
           </Card>
         ) : selected ? (
           <SavedRunResults
+            go={props.go}
             key={selected}
             selected={selected}
             revision={props.revision + refresh}

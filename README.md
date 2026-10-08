@@ -13,7 +13,21 @@ npm run dev
 ```
 
 Open **http://127.0.0.1:5173**. Vite proxies `/api` to
-**http://127.0.0.1:7501**. To use a different backend:
+**http://127.0.0.1:7501**.
+
+To access the frontend from another computer on the local network, stop any
+running dev server and restart it listening on all network interfaces:
+
+```bash
+npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
+```
+
+Open **http://10.1.1.177:5173/** from the other computer. `10.1.1.177` is this
+server's current LAN address; if it changes, use the Network URL printed by Vite.
+The server firewall must allow incoming connections on port `5173`. The backend
+can stay on `127.0.0.1:7501` because Vite proxies API requests on the server.
+
+To use a different backend:
 
 ```bash
 TAMPER_API_URL=http://127.0.0.1:8500 npm run dev

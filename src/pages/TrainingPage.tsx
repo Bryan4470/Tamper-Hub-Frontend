@@ -10,6 +10,7 @@ import { Notice } from "@/components/ui/Notice";
 import { TrainingForm } from "@/features/training/components/TrainingForm";
 import { TrainingImportForm } from "@/features/training/components/TrainingImportForm";
 import { TrainingRunDetails } from "@/features/training/components/TrainingRunDetails";
+import { DeleteJobButton } from "@/features/jobs/components/DeleteJobButton";
 import { useRemote } from "@/hooks/useRemote";
 
 export function TrainingPage(props: HubProps) {
@@ -42,7 +43,25 @@ export function TrainingPage(props: HubProps) {
             {runs.data.items.length ? (
               <Table
                 rows={runs.data.items}
-                columns={runColumns}
+                columns={[
+                  ...runColumns,
+                  {
+                    key: "delete",
+                    label: "Actions",
+                    render: (run) => (
+                      <DeleteJobButton
+                        jobId={run.job_id}
+                        status={run.status}
+                        name={run.name || run.id}
+                        busy={props.busy}
+                        act={props.act}
+                        onDeleted={() => {
+                          if (selected === run.id) setSelected("");
+                        }}
+                      />
+                    ),
+                  },
+                ]}
                 selected={selected}
                 onRow={(r) => setSelected(r.id)}
               />

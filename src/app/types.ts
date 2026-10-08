@@ -7,6 +7,7 @@ export type PageName =
   | "datasets"
   | "training"
   | "inference"
+  | "gradcam"
   | "evaluation"
   | "comparison"
   | "jobs"

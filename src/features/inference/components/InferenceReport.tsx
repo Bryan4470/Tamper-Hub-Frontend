@@ -22,9 +22,10 @@ const tabs = [
 ] as const;
 export function InferenceReport({
   source,
+  go,
   act,
   revision,
-}: Pick<HubProps, "act" | "revision"> & { source: ReportSource }) {
+}: Pick<HubProps, "act" | "revision" | "go"> & { source: ReportSource }) {
   const report = useRemote<InferenceReportData | null>(
     endpoints.inferenceReport.detail(source),
     null,
@@ -163,6 +164,8 @@ export function InferenceReport({
           <ReportPredictions
             key={tab}
             source={source}
+            go={go}
+            provenance={data.provenance}
             errors={tab === "Error cases"}
           />
         )}

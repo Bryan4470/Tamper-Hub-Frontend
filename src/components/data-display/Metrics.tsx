@@ -1,3 +1,4 @@
+import { MetricLabel } from "@/components/data-display/MetricLabel";
 import type { Row } from "@/api/types";
 import { pct } from "@/utils/format";
 
@@ -11,7 +12,7 @@ export function Metrics({ values }: { values: Row }) {
         ["auc_roc", "ROC AUC", "Threshold-independent"],
       ].map(([key, label, hint]) => (
         <div className="metric" key={key}>
-          <span>{label}</span>
+          <MetricLabel metric={key} label={label} />
           <strong>{pct(values[key])}</strong>
           <small>{hint}</small>
         </div>

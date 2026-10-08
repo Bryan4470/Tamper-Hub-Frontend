@@ -1,3 +1,4 @@
+import { requestId } from "@/utils/requestId";
 import { baseUrl, headers } from "@/api/config";
 import type { Row } from "@/api/types";
 
@@ -45,7 +46,7 @@ export function submit(path: string, body: Row, idempotent = true) {
   return api(path, {
     method: "POST",
     body: JSON.stringify(body),
-    headers: idempotent ? { "Idempotency-Key": crypto.randomUUID() } : {},
+    headers: idempotent ? { "Idempotency-Key": requestId() } : {},
   });
 }
 

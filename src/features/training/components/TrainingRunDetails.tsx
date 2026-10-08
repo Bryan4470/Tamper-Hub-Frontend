@@ -48,6 +48,7 @@ export function TrainingRunDetails(
       }
     >
       <Notice error>{details.error || details.data.error}</Notice>
+      <Notice>{details.data.job_warning}</Notice>
       <div className="detail-summary">
         <Status value={details.data.status} />
         <span>{details.data.phase}</span>

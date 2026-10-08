@@ -8,6 +8,7 @@ import { Empty } from "@/components/ui/Empty";
 import { Field } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
 import { Status } from "@/components/ui/Status";
+import { EpochDetails } from "@/features/results/components/EpochDetails";
 import { DatasetDistribution } from "@/features/results/components/DatasetDistribution";
 import { SavedArtifactTable } from "@/features/results/components/SavedArtifactTable";
 import { InferenceReport } from "@/features/inference/components/InferenceReport";
@@ -15,9 +16,10 @@ import { useRemote } from "@/hooks/useRemote";
 
 export function SavedRunResults({
   selected,
+  go,
   revision,
   act,
-}: Pick<HubProps, "revision" | "act"> & { selected: string }) {
+}: Pick<HubProps, "revision" | "act" | "go"> & { selected: string }) {
   const detail = useRemote<SavedRunDetail | null>(
     endpoints.studio.detail(selected),
     null,
@@ -26,7 +28,7 @@ export function SavedRunResults({
   );
   const [tab, setTab] = useState("Results");
   const tabId = useId();
-  const tabs = ["Results", "Dataset distribution"];
+  const tabs = ["Results", "Dataset distribution", "Epoch details"];
   const [split, setSplit] = useState("");
   const [artifactId, setArtifactId] = useState("");
   const data = detail.data;
@@ -46,6 +48,7 @@ export function SavedRunResults({
     return (
       <Card title={data.run.name}>
         <InferenceReport
+          go={go}
           source={{ path: data.run.directory }}
           act={act}
           revision={revision}
@@ -86,13 +89,15 @@ export function SavedRunResults({
                 onClick={() => setTab(name)}
                 onKeyDown={(event) => {
                   const next =
-                    event.key === "ArrowRight" || event.key === "ArrowLeft"
-                      ? 1 - index
-                      : event.key === "Home"
-                        ? 0
-                        : event.key === "End"
-                          ? 1
-                          : -1;
+                    event.key === "ArrowRight"
+                      ? (index + 1) % tabs.length
+                      : event.key === "ArrowLeft"
+                        ? (index + tabs.length - 1) % tabs.length
+                        : event.key === "Home"
+                          ? 0
+                          : event.key === "End"
+                            ? tabs.length - 1
+                            : -1;
                   if (next >= 0) {
                     event.preventDefault();
                     setTab(tabs[next]);
@@ -111,6 +116,13 @@ export function SavedRunResults({
           >
             {tab === "Dataset distribution" ? (
               <DatasetDistribution runId={selected} revision={revision} />
+            ) : tab === "Epoch details" ? (
+              <EpochDetails
+                key={selected}
+                runId={selected}
+                revision={revision}
+                initialSplit={activeSplit === "test" ? "test" : "validation"}
+              />
             ) : (
               <>
                 {(data.run.kind === "training" ||
@@ -172,6 +184,7 @@ export function SavedRunResults({
                     </div>
                     {artifact && (
                       <SavedArtifactTable
+                        go={go}
                         key={artifact.id}
                         runId={selected}
                         artifact={artifact}

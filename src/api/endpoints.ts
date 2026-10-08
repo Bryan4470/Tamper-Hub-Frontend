@@ -17,6 +17,11 @@ const resource = (collection: string) => ({
 });
 
 export const endpoints = {
+  gradcam: {
+    ...resource("/gradcam-runs"),
+    upload: "/gradcam-runs/upload",
+    uploads: "/gradcam-runs/uploads",
+  },
   inferenceReport: {
     saved: "/inference-report/saved",
     options: "/inference-report/options",
@@ -80,6 +85,7 @@ export const endpoints = {
   inference: {
     ...resource("/inference-runs"),
     direct: "/inference-runs/direct",
+    upload: "/inference-runs/upload",
     defaults: (model: {
       model_id?: string;
       checkpoint_path?: string;

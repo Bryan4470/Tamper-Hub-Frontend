@@ -1,3 +1,4 @@
+import type { HubProps } from "@/app/types";
 import { useState } from "react";
 import { endpoints } from "@/api/endpoints";
 import type {
@@ -22,9 +23,13 @@ const outcomeNames: Record<string, string> = {
 
 export function ReportPredictions({
   source,
+  go,
+  provenance,
   errors = false,
 }: {
   source: ReportSource;
+  go: HubProps["go"];
+  provenance?: Record<string, string>;
   errors?: boolean;
 }) {
   const [outcome, setOutcome] = useState(errors ? "errors" : "");
@@ -154,6 +159,23 @@ export function ReportPredictions({
             path={endpoints.inferenceReport.image(source, selected.row_index)}
           />
           <p className="result-path">{selected.image_path}</p>
+          <button
+            className="secondary"
+            onClick={() =>
+              go(
+                "gradcam",
+                JSON.stringify({
+                  image_path: selected.image_path,
+                  card_type: selected.card_type,
+                  config_path: provenance?.config,
+                  checkpoint_path:
+                    provenance?.model || provenance?.checkpoint_path,
+                }),
+              )
+            }
+          >
+            View Grad-CAM
+          </button>
           <p>
             True label: <strong>{selected.ground_truth || "Unknown"}</strong> ·
             Prediction: <strong>{selected.prediction || "N/A"}</strong>

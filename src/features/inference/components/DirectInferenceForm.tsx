@@ -1,6 +1,8 @@
+import { InferenceUploadInput } from "@/features/inference/components/InferenceUploadInput";
+import { requestId } from "@/utils/requestId";
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { submit } from "@/api/client";
+import { api, submit } from "@/api/client";
 import { endpoints } from "@/api/endpoints";
 import type { SavedCheckpointList } from "@/api/studioTypes";
 import type { HubProps } from "@/app/types";
@@ -61,6 +63,8 @@ export function DirectInferenceForm(
   );
   const [checkpoint, setCheckpoint] = useState("");
   const [config, setConfig] = useState("");
+  const [inputSource, setInputSource] = useState("server");
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [inputType, setInputType] = useState<InputType>("directory");
   const [inputPath, setInputPath] = useState("");
   const [card, setCard] = useState("mykadfront");
@@ -116,7 +120,11 @@ export function DirectInferenceForm(
       : "";
 
   const generatedName = inferenceName(
-    inputPath,
+    inputSource === "server"
+      ? inputPath
+      : uploadFiles[0]?.webkitRelativePath.split("/")[0] ||
+          uploadFiles[0]?.name ||
+          "Uploaded images",
     modelSource === "path"
       ? checkpoint
       : selectedCheckpointPath ||
@@ -131,7 +139,7 @@ export function DirectInferenceForm(
     setError("");
     props.act(async () => {
       try {
-        const result = await submit(endpoints.inference.direct, {
+        const body = {
           ...model,
           name: name.trim() || generatedName,
           input_type: inputType,
@@ -148,7 +156,25 @@ export function DirectInferenceForm(
           output_prefix: saveFull
             ? outputPrefix.trim() || "results"
             : "results",
-        });
+        };
+        const result =
+          inputSource === "server"
+            ? await submit(endpoints.inference.direct, body)
+            : await (() => {
+                const data = new FormData();
+                data.append("request", JSON.stringify(body));
+                for (const file of uploadFiles)
+                  data.append(
+                    "files",
+                    file,
+                    file.webkitRelativePath || file.name,
+                  );
+                return api(endpoints.inference.upload, {
+                  method: "POST",
+                  body: data,
+                  headers: { "Idempotency-Key": requestId() },
+                });
+              })();
         props.onCreated(result.resource_id);
       } catch (cause) {
         setError((cause as Error).message);
@@ -242,22 +268,46 @@ export function DirectInferenceForm(
         <div className="section-label">
           <span className="section-number">2</span> Choose your input
         </div>
+        <Field label="Input source">
+          <select
+            value={inputSource}
+            onChange={(event) => {
+              setInputSource(event.target.value);
+              setUploadFiles([]);
+              setError("");
+            }}
+          >
+            <option value="server">Server path</option>
+            <option value="images">Upload images</option>
+            <option value="folder">Upload image folder</option>
+          </select>
+        </Field>
+        {inputSource !== "server" && (
+          <InferenceUploadInput
+            key={inputSource}
+            folder={inputSource === "folder"}
+            files={uploadFiles}
+            onChange={setUploadFiles}
+          />
+        )}
         <div className="form-grid">
-          <Field label="Input type">
-            <select
-              value={inputType}
-              onChange={(event) => {
-                setInputType(event.target.value as InputType);
-                setError("");
-              }}
-            >
-              {Object.entries(inputTypes).map(([value, item]) => (
-                <option key={value} value={value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </Field>
+          {inputSource === "server" && (
+            <Field label="Input type">
+              <select
+                value={inputType}
+                onChange={(event) => {
+                  setInputType(event.target.value as InputType);
+                  setError("");
+                }}
+              >
+                {Object.entries(inputTypes).map(([value, item]) => (
+                  <option key={value} value={value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field
             label="Card type for inference"
             hint="Used for images and CSV rows without a card_type value."
@@ -273,15 +323,17 @@ export function DirectInferenceForm(
             </select>
           </Field>
         </div>
-        <Field label="Input path on server" hint={inputTypes[inputType].hint}>
-          <input
-            required
-            value={inputPath}
-            onChange={(event) => setInputPath(event.target.value)}
-            placeholder={inputTypes[inputType].placeholder}
-          />
-        </Field>
-        {inputType === "batch_config" && (
+        {inputSource === "server" && (
+          <Field label="Input path on server" hint={inputTypes[inputType].hint}>
+            <input
+              required
+              value={inputPath}
+              onChange={(event) => setInputPath(event.target.value)}
+              placeholder={inputTypes[inputType].placeholder}
+            />
+          </Field>
+        )}
+        {inputSource === "server" && inputType === "batch_config" && (
           <details className="inner-details">
             <summary>Batch YAML example</summary>
             <pre>
@@ -421,10 +473,15 @@ export function DirectInferenceForm(
           Results are saved automatically. You can follow progress in Jobs and
           download the predictions here.
         </p>
+        {props.busy && inputSource !== "server" && (
+          <p role="status">Uploading images and preparing the inference job…</p>
+        )}
         <BusyButton
           busy={props.busy}
           disabled={
-            !inputPath.trim() ||
+            (inputSource === "server"
+              ? !inputPath.trim()
+              : !uploadFiles.length) ||
             (modelSource === "path" ? !checkpoint.trim() : !modelChoice)
           }
         >

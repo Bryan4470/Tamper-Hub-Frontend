@@ -1,3 +1,4 @@
+import { GradcamPage } from "@/pages/GradcamPage";
 import { ModelsPage } from "@/pages/ModelsPage";
 import { ResultsNavigation } from "@/components/layout/ResultsNavigation";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -50,6 +51,7 @@ export function App() {
       {page === "overview" && <OverviewPage {...props} workers={workers} />}
       {page === "datasets" && <DatasetsPage {...props} />}
       {page === "training" && <TrainingPage {...props} />}
+      {page === "gradcam" && <GradcamPage key={props.target} {...props} />}
       {page === "inference" && <InferencePage {...props} />}
       {page === "evaluation" && <EvaluationPage {...props} />}
       {page === "comparison" && <ComparisonPage {...props} />}

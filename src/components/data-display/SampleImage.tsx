@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { fetchBlob } from "@/api/client";
 
-export function SampleImage({ path }: { path: string }) {
+export function SampleImage({
+  path,
+  alt = "Dataset sample",
+}: {
+  path: string;
+  alt?: string;
+}) {
   const [url, setUrl] = useState("");
   useEffect(() => {
     let alive = true,
@@ -19,7 +25,7 @@ export function SampleImage({ path }: { path: string }) {
     };
   }, [path]);
   return url ? (
-    <img src={url} alt="Dataset sample" loading="lazy" />
+    <img src={url} alt={alt} loading="lazy" />
   ) : (
     <div className="image-placeholder">Image unavailable</div>
   );

@@ -61,6 +61,7 @@ export function InferenceRunDetails(
         }
       >
         <InferenceReport
+          go={props.go}
           source={{ runId: selected }}
           act={props.act}
           revision={props.revision}
@@ -156,6 +157,7 @@ export function InferenceRunDetails(
           <summary>Full results report</summary>
           {reportOpen && (
             <InferenceReport
+              go={props.go}
               source={{ runId: selected }}
               act={props.act}
               revision={props.revision}
@@ -183,6 +185,30 @@ export function InferenceRunDetails(
               render: (r) => pct(r.prob_tampered),
             },
             { key: "error", label: "Error" },
+            {
+              key: "gradcam",
+              label: "Explain",
+              render: (r) => (
+                <button
+                  className="text-button"
+                  onClick={() =>
+                    props.go(
+                      "gradcam",
+                      JSON.stringify({
+                        image_path: r.image_path,
+                        card_type: r.card_type,
+                        model_id: props.models.some((m) => m.id === r.model_id)
+                          ? r.model_id
+                          : undefined,
+                        checkpoint_path: details.data.request?.checkpoint_path,
+                      }),
+                    )
+                  }
+                >
+                  View Grad-CAM
+                </button>
+              ),
+            },
           ]}
         />
       )}

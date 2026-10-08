@@ -10,6 +10,7 @@ import { Empty } from "@/components/ui/Empty";
 import { BatchInferenceForm } from "@/features/inference/components/BatchInferenceForm";
 import { DirectInferenceForm } from "@/features/inference/components/DirectInferenceForm";
 import { InferenceRunDetails } from "@/features/inference/components/InferenceRunDetails";
+import { DeleteJobButton } from "@/features/jobs/components/DeleteJobButton";
 import { useRemote } from "@/hooks/useRemote";
 
 export function InferencePage(props: HubProps) {
@@ -52,7 +53,25 @@ export function InferencePage(props: HubProps) {
                 ...run,
                 display: describeRun(run, props.models, props.datasets),
               }))}
-              columns={inferenceRunColumns}
+              columns={[
+                ...inferenceRunColumns,
+                {
+                  key: "delete",
+                  label: "Actions",
+                  render: (run) => (
+                    <DeleteJobButton
+                      jobId={run.job_id}
+                      status={run.status}
+                      name={run.name || run.id}
+                      busy={props.busy}
+                      act={props.act}
+                      onDeleted={() => {
+                        if (selected === run.id) setSelected("");
+                      }}
+                    />
+                  ),
+                },
+              ]}
               selected={selected}
               onRow={(r) => {
                 setSelected(r.id);

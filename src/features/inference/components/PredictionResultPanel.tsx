@@ -66,6 +66,23 @@ export function PredictionResultPanel({
           </div>
         </div>
       )}
+      {prediction && (
+        <button
+          className="secondary"
+          onClick={() =>
+            go(
+              "gradcam",
+              JSON.stringify({
+                image_path: prediction.image_path,
+                card_type: prediction.card_type,
+                model_id: prediction.model_id,
+              }),
+            )
+          }
+        >
+          View Grad-CAM
+        </button>
+      )}
       <button
         type="button"
         className="text-button"

@@ -23,6 +23,7 @@ export type InferenceReportData = {
   warnings: string[];
 };
 export type ReportPrediction = {
+  card_type?: string;
   row_index: number;
   image_path: string;
   prediction: string;

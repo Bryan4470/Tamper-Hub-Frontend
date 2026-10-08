@@ -49,18 +49,7 @@ export function ModelsPage(props: HubProps) {
 
   return (
     <div className="workspace-grid models-workspace">
-      <div>
-        <Card
-          title="Add a model"
-          subtitle="Register a checkpoint with the configuration used to train it."
-        >
-          <p>
-            Registered models are available to batch inference, single-image
-            prediction, and evaluation.
-          </p>
-        </Card>
-        <ModelRegistrationForm {...props} onRegistered={setSelected} />
-      </div>
+      <ModelRegistrationForm {...props} onRegistered={setSelected} />
       <Card
         title="Registered checkpoints"
         subtitle="Choose a model to start an inference run."

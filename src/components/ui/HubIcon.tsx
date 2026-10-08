@@ -1,5 +1,7 @@
 import type { PageName } from "@/app/types";
 const paths: Record<PageName, string> = {
+  gradcam:
+    "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6",
   overview: "M3 10 12 3l9 7v11h-6v-7H9v7H3z",
   training: "m12 3 10 5-10 5L2 8z M2 13l10 5 10-5 M2 18l10 5 10-5",
   inference: "M8 5v14l11-7z M3 4v16",

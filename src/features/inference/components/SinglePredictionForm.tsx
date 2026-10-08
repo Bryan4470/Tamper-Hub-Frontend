@@ -1,3 +1,4 @@
+import { requestId } from "@/utils/requestId";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { api, submit } from "@/api/client";
 import { endpoints } from "@/api/endpoints";
@@ -158,7 +159,7 @@ export function SinglePredictionForm(
           const result = await api(endpoints.predictions.create, {
             method: "POST",
             body: data,
-            headers: { "Idempotency-Key": crypto.randomUUID() },
+            headers: { "Idempotency-Key": requestId() },
           });
           results.push({ ...result, label: input.label });
         }

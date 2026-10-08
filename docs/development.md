@@ -315,3 +315,59 @@ with percentage-point deltas. Changing the split clears selections; checkpoints
 without saved metrics cannot be added. This view does not submit jobs or claim
 matching dataset coverage/thresholds. The existing evaluation comparison remains
 available below for coverage and threshold compatibility checks.
+
+## Grad-CAM workspace
+
+The sidebar places Grad-CAM immediately after Inference. `GradcamPage` composes
+`features/gradcam/components/GradcamForm` and `GradcamResults`. The form loads
+the existing saved-checkpoint catalog, supports registered models, and submits
+only on an explicit button click. Uploads use the shared multipart client and
+idempotency headers. The result gallery polls the Python API, renders twelve
+composites per page, downloads authenticated artifacts, and links to Job Monitor.
+No inference or training work is triggered by navigating to this page.
+
+Inference and saved-result image actions pass image/card/checkpoint context to
+the page. Legacy results without an identifiable checkpoint require a selection.
+The existing CLI's uncropped input preprocessing is used; heatmaps show class
+attribution rather than a tamper mask. Grad-CAM++ is not included.
+
+Backend endpoints are centralized under `endpoints.gradcam`; the Python backend
+must be restarted after installing the new routes. Run `npm run check`,
+`npm run build`, and `npx playwright test tests/gradcam.spec.ts` to validate the
+UI with mocked job submissions.
+
+## Inference uploads
+
+`DirectInferenceForm` now switches between server paths, local image selection,
+and local folder selection. `InferenceUploadInput` owns file-picker validation
+and selection feedback; folders use `webkitdirectory` and retain relative
+paths. Non-image files are excluded with a visible count. Limits are 1,000
+images, 20 MB/image and 500 MB combined.
+
+Only clicking Run inference uploads files. The shared API client sends multipart
+`request` JSON and repeated `files` entries to `endpoints.inference.upload`,
+with an idempotency header. Existing model, device, crop, threshold, and output
+options apply. A failed request preserves the selected files for retry; changing
+the input source clears them. Server-path behavior remains available.
+`tests/inference-upload.spec.ts` mocks submissions and exercises single-image,
+nested-folder, and error flows.
+
+### Grad-CAM layout alignment
+
+Grad-CAM follows the Inference page's numbered checkpoint/input/run sections,
+shared compute selector and busy button, and collapsed advanced options.
+Checkpoint source has exactly two choices: a saved checkpoint or an explicit
+path. The saved dropdown groups Models first, then Training checkpoints, matching
+Inference. Input source separates server paths and single-image upload.
+The main page shows a run table with status, counts, and the shared deletion
+action. Selecting or creating a run opens details with a back button; the form
+stays mounted but hidden so returning preserves its selections. Navigation does
+not submit work. Output location on server and Output folder name mirror
+Inference, with a default-location reset and a timestamped-folder preview.
+The backend creates a dedicated output folder and records it for job deletion.
+
+Grad-CAM's Input source also includes **Upload image folder**, reusing
+`InferenceUploadInput` and the backend's shared upload transport through
+`endpoints.gradcam.uploads`. Folder selection preserves subfolders and skips
+non-image files. The Grad-CAM image limit continues to apply; changing sources
+clears selected files. Existing single-image uploads keep their endpoint.

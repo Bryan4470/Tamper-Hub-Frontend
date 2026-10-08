@@ -4,6 +4,7 @@ import { endpoints } from "@/api/endpoints";
 import type { SavedCheckpoint, SavedCheckpointList } from "@/api/studioTypes";
 import type { HubProps } from "@/app/types";
 import { BusyButton } from "@/components/ui/BusyButton";
+import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
 import { useRemote } from "@/hooks/useRemote";
@@ -69,10 +70,10 @@ export function ModelRegistrationForm(
   }
 
   return (
-    <details className="disclosure" open={!props.models.length}>
-      <summary>
-        Register a model checkpoint <span>{props.models.length} available</span>
-      </summary>
+    <Card
+      title="Register a model checkpoint"
+      subtitle="Register a checkpoint with the configuration used to train it."
+    >
       <form onSubmit={register}>
         <Notice error>{checkpoints.error}</Notice>
         <div className="form-grid">
@@ -161,6 +162,6 @@ export function ModelRegistrationForm(
         </div>
         <BusyButton busy={props.busy}>Register model</BusyButton>
       </form>
-    </details>
+    </Card>
   );
 }

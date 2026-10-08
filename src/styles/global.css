@@ -479,8 +479,8 @@ main:focus {
 .workspace-grid > * {
   min-width: 0;
 }
-.models-workspace > :nth-child(2) {
-  grid-column: 1 / -1;
+.models-workspace {
+  grid-template-columns: minmax(0, 1fr);
 }
 .dataset-workspace {
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
@@ -2301,4 +2301,53 @@ progress::-moz-progress-bar {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: 12px;
+}
+
+.epoch-metric-grid,
+.epoch-count-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.epoch-details .metric > strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-help-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  color: #4b5563;
+  background: white;
+  font-size: 12px;
+  vertical-align: middle;
+}
+.metric-help-text {
+  display: block;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  font-size: 12px;
+  font-weight: normal;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.gradcam-result {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.gradcam-result img {
+  display: block;
+  width: 100%;
+  height: auto;
 }

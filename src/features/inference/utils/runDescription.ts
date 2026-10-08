@@ -57,7 +57,9 @@ export function describeRun(run: Row, models: Row[], datasets: Row[]) {
     name,
     input,
     description: [
-      inputLabels[request.input_type] ||
+      (request.uploaded_files
+        ? `Uploaded images (${request.uploaded_files.length})`
+        : inputLabels[request.input_type]) ||
         (request.dataset_ids
           ? "Registered datasets"
           : "Input details unavailable"),

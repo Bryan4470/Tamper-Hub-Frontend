@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { downloadFile } from "@/api/artifacts";
 import { endpoints } from "@/api/endpoints";
-import type { ResultRow, SavedArtifact, SavedTable } from "@/api/studioTypes";
+import type {
+  SavedCheckpointList,
+  ResultRow,
+  SavedArtifact,
+  SavedTable,
+} from "@/api/studioTypes";
 import type { HubProps } from "@/app/types";
 import { Metrics } from "@/components/data-display/Metrics";
 import { Table } from "@/components/data-display/Table";
@@ -24,13 +29,20 @@ const rate =
 
 export function SavedArtifactTable({
   runId,
+  go,
   artifact,
   revision,
   act,
-}: Pick<HubProps, "revision" | "act"> & {
+}: Pick<HubProps, "revision" | "act" | "go"> & {
   runId: string;
   artifact: SavedArtifact;
 }) {
+  const catalog = useRemote<SavedCheckpointList>(
+    artifact.kind === "predictions" ? endpoints.studio.checkpoints : null,
+    { items: [] },
+    revision,
+    60000,
+  );
   const [offset, setOffset] = useState(0);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
@@ -70,8 +82,12 @@ export function SavedArtifactTable({
           "csv",
           "card_type",
           "num_samples",
-          "far",
           "frr",
+          "far",
+          "tp",
+          "tn",
+          "fp",
+          "fn",
           "f2_score",
           "f1_score",
           "auc_roc",
@@ -194,22 +210,61 @@ export function SavedArtifactTable({
                   ? (row) => setSelected(row)
                   : undefined
               }
-              columns={columns.map((key) => ({
-                key,
-                label: key.replaceAll("_", " "),
-                render: (row) => (
-                  <span
-                    className="result-cell"
-                    title={String(row[key] ?? "N/A")}
-                  >
-                    {row[key] == null || row[key] === ""
-                      ? "N/A"
-                      : rate.test(key)
-                        ? pct(row[key])
-                        : String(row[key])}
-                  </span>
-                ),
-              }))}
+              columns={[
+                ...(artifact.kind === "predictions"
+                  ? [
+                      {
+                        key: "gradcam",
+                        label: "Explain",
+                        render: (row: ResultRow) => (
+                          <button
+                            className="text-button"
+                            onClick={() =>
+                              go(
+                                "gradcam",
+                                JSON.stringify({
+                                  image_path: row.image_path,
+                                  card_type: row.card_type,
+                                  run_id: runId,
+                                  checkpoint_path: catalog.data.items.find(
+                                    (c) =>
+                                      c.run_id === runId &&
+                                      c.name.replace(/\.(pth|pt)$/, "") ===
+                                        String(
+                                          row.checkpoint ||
+                                            artifact.filename
+                                              .split("/")
+                                              .pop()
+                                              ?.replace(/\.csv(\.gz)?$/, ""),
+                                        ).replace(/\.(pth|pt)$/, ""),
+                                  )?.checkpoint_path,
+                                }),
+                              )
+                            }
+                          >
+                            View Grad-CAM
+                          </button>
+                        ),
+                      },
+                    ]
+                  : []),
+                ...columns.map((key) => ({
+                  key,
+                  label: key.replaceAll("_", " "),
+                  render: (row: ResultRow) => (
+                    <span
+                      className="result-cell"
+                      title={String(row[key] ?? "N/A")}
+                    >
+                      {row[key] == null || row[key] === ""
+                        ? "N/A"
+                        : rate.test(key)
+                          ? pct(row[key])
+                          : String(row[key])}
+                    </span>
+                  ),
+                })),
+              ]}
             />
           ) : (
             !table.error && (
