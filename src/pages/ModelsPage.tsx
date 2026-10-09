@@ -7,7 +7,9 @@ import { Table } from "@/components/data-display/Table";
 import { BusyButton } from "@/components/ui/BusyButton";
 import { Card } from "@/components/ui/Card";
 import { Empty } from "@/components/ui/Empty";
+import { HelpTip } from "@/components/ui/HelpTip";
 import { Field } from "@/components/ui/Field";
+import { ModelJobs } from "@/features/models/components/ModelJobs";
 import { ModelRegistrationForm } from "@/features/inference/components/ModelRegistrationForm";
 export function ModelsPage(props: HubProps) {
   const [selected, setSelected] = useState("");
@@ -68,9 +70,64 @@ export function ModelsPage(props: HubProps) {
                 key: "checkpoint_path",
                 label: "Checkpoint",
                 render: (model) => (
-                  <span className="result-cell" title={model.checkpoint_path}>
-                    {model.checkpoint_path || "Registered checkpoint"}
+                  <div className="button-group">
+                    <span className="result-cell" title={model.checkpoint_path}>
+                      {model.checkpoint_path || "Registered checkpoint"}
+                    </span>
+                    {model.checkpoint_path && (
+                      <button
+                        type="button"
+                        className="secondary small"
+                        aria-label={`Copy checkpoint path for ${model.name}`}
+                        title="Copy checkpoint path"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void props.act(
+                            () =>
+                              navigator.clipboard.writeText(
+                                model.checkpoint_path,
+                              ),
+                            "Checkpoint path copied.",
+                          );
+                        }}
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          aria-hidden="true"
+                        >
+                          <rect x="9" y="9" width="12" height="12" rx="2" />
+                          <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                key: "jobs",
+                label: (
+                  <span className="metric-label">
+                    Linked jobs{" "}
+                    <HelpTip
+                      label="Linked jobs"
+                      text="Add a linked job to a model checkpoint to track its inference runs."
+                    />
                   </span>
+                ),
+                render: (model) => (
+                  <ModelJobs
+                    modelId={model.id}
+                    modelName={model.name}
+                    revision={props.revision}
+                    busy={props.busy}
+                    act={props.act}
+                    go={props.go}
+                  />
                 ),
               },
               {

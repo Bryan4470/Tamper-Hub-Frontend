@@ -1,3 +1,9 @@
+import { TrainingEvaluationSettings } from "@/features/training/components/TrainingEvaluationSettings";
+import {
+  evaluationSettings,
+  thresholdPrefix,
+  farKey,
+} from "@/features/training/utils/evaluationSettings";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { submit } from "@/api/client";
 import { endpoints } from "@/api/endpoints";
@@ -192,6 +198,15 @@ export function TrainingForm(
       return "Output location must be an absolute server folder path.";
     if (!config) return "Choose a configuration template.";
     if (!configYaml.trim()) return "Configuration YAML cannot be empty.";
+    const values = evaluationSettings(selectedTemplate, overrides);
+    if (
+      values.thresholds.some(
+        ({ value }) => !Number.isFinite(value) || value < 0 || value > 1,
+      )
+    )
+      return "Each tamper threshold must be a number between 0 and 1.";
+    if (!Number.isFinite(values.far) || values.far < 0 || values.far > 1)
+      return "FAR constraint must be a number between 0% and 100%.";
     return "";
   }
   function next() {
@@ -232,6 +247,7 @@ export function TrainingForm(
   }
   const selectedTemplate =
     configs.data.items.find((item: Row) => item.id === config) || {};
+  const effectiveEvaluation = evaluationSettings(selectedTemplate, overrides);
   return (
     <Card
       title="Configure an experiment"
@@ -398,6 +414,25 @@ export function TrainingForm(
               setOverrides((current) => ({ ...current, [key]: value }))
             }
           />
+          <TrainingEvaluationSettings
+            template={selectedTemplate}
+            overrides={overrides}
+            onChange={(key, value) =>
+              setOverrides((current) => ({ ...current, [key]: value }))
+            }
+            onReset={() => {
+              setOverrides((current) =>
+                Object.fromEntries(
+                  Object.entries(current).filter(
+                    ([key]) =>
+                      key !== farKey && !key.startsWith(`${thresholdPrefix}.`),
+                  ),
+                ),
+              );
+              setValidation(null);
+              setError("");
+            }}
+          />
         </fieldset>
         <fieldset
           className="wizard-panel"
@@ -451,6 +486,20 @@ export function TrainingForm(
                 {datasetMode === "config"
                   ? `${sourcePaths("test").length} config CSVs`
                   : `${sourcePaths("test").length} custom CSVs`}
+              </dd>
+            </div>
+            {effectiveEvaluation.thresholds.map(({ card, value }) => (
+              <div key={card}>
+                <dt>{card} tamper threshold</dt>
+                <dd>{Number.isFinite(value) ? value : "Invalid"}</dd>
+              </div>
+            ))}
+            <div>
+              <dt>FAR constraint</dt>
+              <dd>
+                {Number.isFinite(effectiveEvaluation.far)
+                  ? `${Number((effectiveEvaluation.far * 100).toPrecision(12))}%`
+                  : "Invalid"}
               </dd>
             </div>
           </dl>

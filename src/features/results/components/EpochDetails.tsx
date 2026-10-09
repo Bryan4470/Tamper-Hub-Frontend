@@ -1,8 +1,8 @@
+import { EpochCsvResults } from "@/features/results/components/EpochCsvResults";
 import { MetricLabel } from "@/components/data-display/MetricLabel";
 import { useState } from "react";
 import { endpoints } from "@/api/endpoints";
-import type { EpochList, ResultRow } from "@/api/studioTypes";
-import { Table } from "@/components/data-display/Table";
+import type { EpochList } from "@/api/studioTypes";
 import { Empty } from "@/components/ui/Empty";
 import { Field } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
@@ -10,61 +10,16 @@ import { CardTypeMetrics } from "@/features/results/components/CardTypeMetrics";
 import { useRemote } from "@/hooks/useRemote";
 import { pct } from "@/utils/format";
 
-const rates = new Set([
-  "accuracy",
-  "precision",
-  "recall",
-  "far",
-  "frr",
-  "f1_score",
-  "f2_score",
-  "auc_roc",
-  "val_accuracy",
-  "val_f1",
-  "val_f2",
-  "val_auc",
-  "val_far",
-  "val_frr",
-]);
-const columns = (rows: ResultRow[]) => {
-  const keys = [...new Set(rows.flatMap(Object.keys))];
-  const preferred = [
-    "checkpoint",
-    "epoch",
-    "rank",
-    "csv",
-    "card_type",
-    "num_samples",
-    "frr",
-    "far",
-    "tp",
-    "tn",
-    "fp",
-    "fn",
-  ];
-  return [
-    ...preferred.filter((key) => keys.includes(key)),
-    ...keys.filter((key) => !preferred.includes(key)),
-  ].map((key) => ({
-    key,
-    label: key.replaceAll("_", " "),
-    render: (row: ResultRow) =>
-      row[key] == null
-        ? "N/A"
-        : rates.has(key)
-          ? pct(row[key])
-          : String(row[key]),
-  }));
-};
-
 export function EpochDetails({
   runId,
   revision,
   initialSplit = "validation",
+  initialCheckpoint = "",
 }: {
   runId: string;
   revision: number;
   initialSplit?: string;
+  initialCheckpoint?: string;
 }) {
   const remote = useRemote<EpochList>(
     endpoints.studio.epochs(runId),
@@ -73,7 +28,7 @@ export function EpochDetails({
     60000,
   );
   const [split, setSplit] = useState(initialSplit);
-  const [checkpoint, setCheckpoint] = useState("");
+  const [checkpoint, setCheckpoint] = useState(initialCheckpoint);
   const splits = [...new Set(remote.data.items.map((item) => item.split))];
   const activeSplit =
     splits.find((value) => value === split) ||
@@ -82,21 +37,6 @@ export function EpochDetails({
   const epochs = remote.data.items.filter((item) => item.split === activeSplit);
   const epoch =
     epochs.find((item) => item.checkpoint === checkpoint) || epochs[0];
-  const historyKeys = [
-    "epoch",
-    "val_accuracy",
-    "val_f1",
-    "val_f2",
-    "val_auc",
-    "val_far",
-    "val_frr",
-    "val_loss",
-  ];
-  const history = (epoch?.history || []).map((row) =>
-    Object.fromEntries(
-      historyKeys.filter((key) => key in row).map((key) => [key, row[key]]),
-    ),
-  );
   const constraint = epoch?.metrics.far_constraint_met;
   const constraintMet =
     constraint === true ||
@@ -195,29 +135,12 @@ export function EpochDetails({
             predictions={epoch.predictions}
             revision={revision}
           />
-          <h4>Validation record for this epoch</h4>
-          {history.length ? (
-            <Table rows={history} columns={columns(history)} />
-          ) : (
-            <Empty title="No validation record for this epoch" />
-          )}
-          {activeSplit === "test" ? (
-            <>
-              <h4>Test datasets for this epoch</h4>
-              {epoch.datasets.length ? (
-                <Table
-                  rows={epoch.datasets}
-                  columns={columns(epoch.datasets)}
-                />
-              ) : (
-                <Empty title="Per-dataset results are unavailable for this epoch" />
-              )}
-            </>
-          ) : (
-            <p className="muted">
-              Choose Test to inspect results for individual evaluation datasets.
-            </p>
-          )}
+          <EpochCsvResults
+            key={`${runId}:${activeSplit}:${epoch.checkpoint}`}
+            runId={runId}
+            epoch={epoch}
+            revision={revision}
+          />
         </>
       ) : (
         !remote.error && (

@@ -83,6 +83,7 @@ export type EpochRecord = {
 
 export type EpochList = { items: EpochRecord[]; warnings: string[] };
 export type CardPerformance = {
+  datasets?: ResultRow[];
   overall: ResultRow;
   cards: ResultRow[];
   warnings: string[];

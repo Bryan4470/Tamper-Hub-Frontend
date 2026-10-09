@@ -213,9 +213,8 @@ export function TrainingConfigurationFields({
       <details className="inner-details advanced-settings-note">
         <summary>Advanced settings</summary>
         <p>
-          Region definitions, loss weights, augmentation details, thresholds,
-          checkpointing, and other advanced values remain unchanged from the
-          selected template.
+          Region definitions, loss weights, augmentation details, checkpointing,
+          and other advanced values remain unchanged from the selected template.
         </p>
       </details>
     </div>

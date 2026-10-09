@@ -6,3 +6,6 @@ playwright-report/
 .env.local
 output/
 .playwright-cli/
+
+# Generated Playwright sessions and test reports
+.playwright-mcp/

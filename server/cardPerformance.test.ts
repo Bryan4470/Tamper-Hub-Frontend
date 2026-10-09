@@ -100,3 +100,84 @@ test("missing labels, probabilities and denominators remain unavailable; unrelat
   assert.equal(empty.overall.accuracy, null);
   assert.equal(empty.overall.f1_score, null);
 });
+
+test("per-CSV metrics preserve full source paths, duplicates and epoch/split isolation", async () => {
+  const result = await cardPerformance(
+    rows([
+      {
+        source_csv: "/front/shared.csv",
+        ground_truth: "tamper",
+        prediction: "genuine",
+        checkpoint: "epoch_2",
+        split: "val",
+      },
+      {
+        source_csv: "/front/shared.csv",
+        ground_truth: "tamper",
+        prediction: "genuine",
+        checkpoint: "epoch_2",
+        split: "val",
+      },
+      {
+        source_csv: "/back/shared.csv",
+        ground_truth: "genuine",
+        prediction: "genuine",
+      },
+      { source_csv: "/back/shared.csv", ground_truth: "genuine" },
+      {
+        source_csv: "/wrong.csv",
+        ground_truth: "tamper",
+        prediction: "tamper",
+        checkpoint: "epoch_1",
+      },
+      {
+        source_csv: "/wrong.csv",
+        ground_truth: "tamper",
+        prediction: "tamper",
+        split: "test",
+      },
+    ]),
+    "epoch_2",
+    "validation",
+  );
+  assert.equal(result.datasets?.length, 2);
+  const front = result.datasets!.find(
+    (row) => row.csv === "/front/shared.csv",
+  )!;
+  assert.equal(front.num_samples, 2);
+  assert.equal(front.fn, 2);
+  assert.equal(front.far, 1);
+  assert.equal(front.frr, null);
+  const back = result.datasets!.find((row) => row.csv === "/back/shared.csv")!;
+  assert.equal(back.tn, 1);
+  assert.equal(back.excluded, 1);
+  assert.equal(back.auc_roc, null);
+});
+
+test("test manifests use preserved original CSV provenance", async () => {
+  const result = await cardPerformance(
+    rows([
+      {
+        source_csv: "/submissions/test.csv",
+        metadata_json: JSON.stringify({
+          source_csv: "/datasets/mykadfront/genuine/a.csv",
+        }),
+        ground_truth: "genuine",
+        prediction: "genuine",
+      },
+      {
+        source_csv: "/submissions/test.csv",
+        metadata_source_csv: "/datasets/mykadback/tamper/b.csv",
+        ground_truth: "tamper",
+        prediction: "genuine",
+      },
+    ]),
+    "epoch_1",
+    "test",
+  );
+  assert.deepEqual(
+    result.datasets!.map((row) => row.csv),
+    ["/datasets/mykadback/tamper/b.csv", "/datasets/mykadfront/genuine/a.csv"],
+  );
+  assert.equal(result.datasets![0].far, 1);
+});

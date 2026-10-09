@@ -1,3 +1,4 @@
+import { csvDisplayName } from "@/utils/csvDisplayName";
 import { useState } from "react";
 import { downloadFile } from "@/api/artifacts";
 import { endpoints } from "@/api/endpoints";
@@ -33,9 +34,11 @@ export function SavedArtifactTable({
   artifact,
   revision,
   act,
+  onOpenCheckpoint,
 }: Pick<HubProps, "revision" | "act" | "go"> & {
   runId: string;
   artifact: SavedArtifact;
+  onOpenCheckpoint: (checkpoint: string) => void;
 }) {
   const catalog = useRemote<SavedCheckpointList>(
     artifact.kind === "predictions" ? endpoints.studio.checkpoints : null,
@@ -197,7 +200,8 @@ export function SavedArtifactTable({
                       metrics.csv ||
                       "the first displayed row",
                   )}
-                  . Select a row to inspect another result.
+                  . Click a checkpoint to inspect its metrics, or an epoch to
+                  open Epoch details.
                 </p>
                 <Metrics values={metrics} />
               </>
@@ -205,11 +209,6 @@ export function SavedArtifactTable({
           {table.data.items.length ? (
             <Table
               rows={table.data.items}
-              onRow={
-                artifact.kind === "metrics"
-                  ? (row) => setSelected(row)
-                  : undefined
-              }
               columns={[
                 ...(artifact.kind === "predictions"
                   ? [
@@ -251,18 +250,64 @@ export function SavedArtifactTable({
                 ...columns.map((key) => ({
                   key,
                   label: key.replaceAll("_", " "),
-                  render: (row: ResultRow) => (
-                    <span
-                      className="result-cell"
-                      title={String(row[key] ?? "N/A")}
-                    >
-                      {row[key] == null || row[key] === ""
-                        ? "N/A"
-                        : rate.test(key)
-                          ? pct(row[key])
-                          : String(row[key])}
-                    </span>
-                  ),
+                  render: (row: ResultRow) => {
+                    const checkpoint =
+                      row.checkpoint != null && row.checkpoint !== ""
+                        ? String(row.checkpoint).replace(/\.(pth|pt)$/, "")
+                        : row.epoch != null && row.epoch !== ""
+                          ? `epoch_${row.epoch}`
+                          : "";
+                    if (
+                      artifact.kind !== "predictions" &&
+                      key === "epoch" &&
+                      row[key] != null &&
+                      row[key] !== "" &&
+                      checkpoint
+                    ) {
+                      return (
+                        <button
+                          type="button"
+                          className="text-button"
+                          title={`Open ${checkpoint} in Epoch details`}
+                          onClick={() => onOpenCheckpoint(checkpoint)}
+                        >
+                          {String(row[key])}
+                        </button>
+                      );
+                    }
+                    const cell = (
+                      <span
+                        className={
+                          key === "csv" ||
+                          key === "source_csv" ||
+                          key === "metadata_source_csv"
+                            ? "csv-display-name"
+                            : "result-cell"
+                        }
+                        title={String(row[key] ?? "N/A")}
+                      >
+                        {row[key] == null || row[key] === ""
+                          ? "N/A"
+                          : key === "csv" ||
+                              key === "source_csv" ||
+                              key === "metadata_source_csv"
+                            ? csvDisplayName(row[key])
+                            : rate.test(key)
+                              ? pct(row[key])
+                              : String(row[key])}
+                      </span>
+                    );
+                    return artifact.kind === "metrics" && key === columns[0] ? (
+                      <button
+                        className="text-button"
+                        onClick={() => setSelected(row)}
+                      >
+                        {cell}
+                      </button>
+                    ) : (
+                      cell
+                    );
+                  },
                 })),
               ]}
             />

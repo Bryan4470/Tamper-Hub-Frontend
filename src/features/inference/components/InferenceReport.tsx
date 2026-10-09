@@ -177,6 +177,10 @@ export function InferenceReport({
               columns={[
                 { key: "csv", label: "Input CSV" },
                 { key: "num_samples", label: "Evaluated" },
+                { key: "fp", label: "FP" },
+                { key: "fn", label: "FN" },
+                { key: "tp", label: "TP" },
+                { key: "tn", label: "TN" },
                 ...[
                   ["accuracy", "Accuracy"],
                   ["precision", "Precision"],
@@ -190,8 +194,6 @@ export function InferenceReport({
                   label,
                   render: (row: Record<string, unknown>) => pct(row[key]),
                 })),
-                { key: "fn", label: "Missed tampering" },
-                { key: "fp", label: "False alarms" },
               ]}
             />
           ) : (

@@ -1,3 +1,4 @@
+import { DeleteSavedRunButton } from "@/features/results/components/DeleteSavedRunButton";
 import { useState } from "react";
 import { endpoints } from "@/api/endpoints";
 import type { SavedRunList } from "@/api/studioTypes";
@@ -13,7 +14,7 @@ import { SavedRunResults } from "@/features/results/components/SavedRunResults";
 import { useRemote } from "@/hooks/useRemote";
 
 export function SavedResultsPage(
-  props: Pick<HubProps, "revision" | "act" | "go">,
+  props: Pick<HubProps, "revision" | "act" | "go" | "busy">,
 ) {
   const [selected, setSelected] = useState("");
   const [search, setSearch] = useState("");
@@ -44,6 +45,18 @@ export function SavedResultsPage(
   ];
   const warnings = [...runs.data.warnings, ...(reports.data.warnings || [])];
   const selectedRun = allRuns.find((run) => run.id === selected);
+  const deleteAction = selectedRun ? (
+    <DeleteSavedRunButton
+      key={selectedRun.id}
+      run={selectedRun}
+      busy={props.busy}
+      act={props.act}
+      onDeleted={() => {
+        setSelected("");
+        setRefresh((value) => value + 1);
+      }}
+    />
+  ) : undefined;
   const filtered = allRuns.filter(
     (run) =>
       (!kind || run.kind === kind) &&
@@ -154,7 +167,7 @@ export function SavedResultsPage(
       </Card>
       <div className="saved-results-detail">
         {selectedRun?.inference_id ? (
-          <Card title={selectedRun.name}>
+          <Card title={selectedRun.name} action={deleteAction}>
             <InferenceReport
               go={props.go}
               source={{ runId: selectedRun.inference_id }}
@@ -164,6 +177,7 @@ export function SavedResultsPage(
           </Card>
         ) : selected ? (
           <SavedRunResults
+            action={deleteAction}
             go={props.go}
             key={selected}
             selected={selected}

@@ -1,5 +1,6 @@
 import type { PageName } from "@/app/types";
 const paths: Record<PageName, string> = {
+  notebook: "M5 3h15v18H5z M3 7h4 M3 12h4 M3 17h4 M10 8h6 M10 12h6 M10 16h4",
   gradcam:
     "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6",
   overview: "M3 10 12 3l9 7v11h-6v-7H9v7H3z",

@@ -1,5 +1,6 @@
 import { GradcamPage } from "@/pages/GradcamPage";
 import { ModelsPage } from "@/pages/ModelsPage";
+import { NotebookPage } from "@/pages/NotebookPage";
 import { ResultsNavigation } from "@/components/layout/ResultsNavigation";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Notice } from "@/components/ui/Notice";
@@ -56,6 +57,7 @@ export function App() {
       {page === "evaluation" && <EvaluationPage {...props} />}
       {page === "comparison" && <ComparisonPage {...props} />}
       {page === "jobs" && <JobsPage {...props} />}
+      {page === "notebook" && <NotebookPage go={props.go} />}
       {page === "settings" && <SettingsPage {...props} onSave={refresh} />}
     </AppLayout>
   );

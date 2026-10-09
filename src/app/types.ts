@@ -11,6 +11,7 @@ export type PageName =
   | "evaluation"
   | "comparison"
   | "jobs"
+  | "notebook"
   | "settings";
 export type HubProps = {
   datasets: Row[];

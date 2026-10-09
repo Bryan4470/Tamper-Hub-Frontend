@@ -17,6 +17,18 @@ const resource = (collection: string) => ({
 });
 
 export const endpoints = {
+  notebook: "/studio-api/v1/notebook",
+  notebookItems: {
+    job: (id: string, jobId: string) =>
+      `/studio-api/v1/notebook/items/${encodeURIComponent(id)}/jobs/${encodeURIComponent(jobId)}`,
+    list: "/studio-api/v1/notebook/items",
+    item: (id: string) =>
+      `/studio-api/v1/notebook/items/${encodeURIComponent(id)}`,
+    upload: (id: string, name: string) =>
+      `/studio-api/v1/notebook/items/${encodeURIComponent(id)}/attachments?${new URLSearchParams({ name })}`,
+    attachment: (id: string, fileId: string) =>
+      `/studio-api/v1/notebook/items/${encodeURIComponent(id)}/attachments/${encodeURIComponent(fileId)}`,
+  },
   gradcam: {
     ...resource("/gradcam-runs"),
     upload: "/gradcam-runs/upload",
@@ -60,6 +72,16 @@ export const endpoints = {
       cardType = "",
     ) =>
       `/studio-api/v1/runs/${encodeURIComponent(id)}/table?${new URLSearchParams({ artifact, offset: String(offset), limit: "50", q: search, outcome, card_type: cardType })}`,
+    csvImages: (
+      id: string,
+      artifact: string,
+      source: string,
+      cell: string,
+      offset: number,
+    ) =>
+      `/studio-api/v1/runs/${encodeURIComponent(id)}/table?${new URLSearchParams({ artifact, source_csv: source, confusion: cell, offset: String(offset), limit: "12" })}`,
+    predictionImage: (id: string, artifact: string, index: number) =>
+      `/studio-api/v1/runs/${encodeURIComponent(id)}/image?${new URLSearchParams({ artifact, index: String(index) })}`,
     download: (id: string, artifact: string) =>
       `/studio-api/v1/runs/${encodeURIComponent(id)}/download?${new URLSearchParams({ artifact })}`,
   },
@@ -72,7 +94,12 @@ export const endpoints = {
   },
   datasetSources: "/dataset-sources",
   datasetCollections: "/dataset-collections",
-  models: resource("/models"),
+  models: {
+    ...resource("/models"),
+    jobs: (id: string) => `/models/${encodeURIComponent(id)}/jobs`,
+    job: (id: string, jobId: string) =>
+      `/models/${encodeURIComponent(id)}/jobs/${encodeURIComponent(jobId)}`,
+  },
   training: {
     ...resource("/training-runs"),
     overview: (path: string) =>

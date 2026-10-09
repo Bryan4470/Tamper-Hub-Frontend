@@ -1106,7 +1106,8 @@ main:focus {
   max-height: 190px;
   overflow: auto;
 }
-.picker-items > label {
+.picker-items > label,
+.csv-source-option {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1175,7 +1176,8 @@ main:focus {
 .source-picker-items > label {
   align-items: flex-start;
 }
-.source-picker-items > label > span {
+.source-picker-items > label > span,
+.csv-source-option > span {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -1874,7 +1876,8 @@ progress::-moz-progress-bar {
   font-size: 12px;
   color: #374151;
 }
-.picker-items > label {
+.picker-items > label,
+.csv-source-option {
   font-size: 13px;
 }
 .picker-items small {
@@ -2350,4 +2353,272 @@ progress::-moz-progress-bar {
   display: block;
   width: 100%;
   height: auto;
+}
+
+.configured-csvs {
+  margin-top: 1rem;
+}
+.configured-csv-list {
+  max-height: 24rem;
+  overflow-y: auto;
+  padding-left: 1.75rem;
+}
+.configured-csv-list li {
+  padding: 0.65rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.configured-csv-list strong,
+.configured-csv-list small,
+.configured-csv-list code {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.configured-csv-list small {
+  margin: 0.25rem 0;
+}
+.configured-csv-list code {
+  font-size: 0.75rem;
+}
+
+.csv-label-group + .csv-label-group {
+  margin-top: 1rem;
+}
+.csv-label-group h3 {
+  margin: 0;
+  padding: 0.6rem;
+  font-size: 0.9rem;
+  background: #f3f4f6;
+  border-radius: 5px;
+}
+.csv-card-group {
+  padding-left: 0.6rem;
+}
+.csv-card-group h4 {
+  margin: 0.8rem 0 0.3rem;
+  font-size: 0.8rem;
+}
+.csv-card-group h4 span {
+  margin-left: 0.5rem;
+  font-weight: 400;
+  color: #6b7280;
+}
+
+/* Keep epoch CSV metrics readable within the available panel width. */
+.epoch-csv-metrics-table table {
+  table-layout: fixed;
+  white-space: normal;
+}
+.epoch-csv-metrics-table th,
+.epoch-csv-metrics-table td {
+  overflow-wrap: anywhere;
+  padding: 10px 6px;
+}
+.epoch-csv-metrics-table th:first-child,
+.epoch-csv-metrics-table td:first-child {
+  width: 34%;
+}
+.csv-display-name {
+  display: inline-block;
+  max-width: 22rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.epoch-csv-card-group {
+  margin-top: 1.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.epoch-csv-card-group h5 {
+  margin: 0 0 0.5rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 5px;
+  background: #f3f4f6;
+  font-size: 0.8rem;
+}
+.epoch-csv-card-group h5 span {
+  margin-left: 0.5rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.epoch-image-viewer {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.epoch-image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 1rem;
+}
+.epoch-image-grid article {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.epoch-image-grid article.expanded {
+  grid-column: 1 / -1;
+}
+.epoch-image-grid img {
+  width: 100%;
+  height: 180px;
+  object-fit: contain;
+}
+.epoch-image-grid .expanded img {
+  height: auto;
+  max-height: 75vh;
+}
+.epoch-image-grid p,
+.epoch-image-grid small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.epoch-image-open {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: #f9fafb;
+  cursor: zoom-in;
+}
+
+.notebook-editor {
+  min-height: 110px;
+  line-height: 1.8;
+  resize: vertical;
+}
+
+.model-linked-jobs {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 18rem;
+  max-width: 32rem;
+}
+.model-linked-jobs > button {
+  justify-self: start;
+}
+.model-job-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.model-job-picker select {
+  width: 24rem;
+  max-width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+.model-job-picker > button {
+  flex-shrink: 0;
+}
+
+.notebook-workspace {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+.notebook-add-item {
+  display: grid;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+.notebook-item-list {
+  display: grid;
+  gap: 0.5rem;
+}
+.notebook-item-list button {
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.notebook-item-list small {
+  display: block;
+  font-weight: normal;
+  margin-top: 0.3rem;
+}
+.notebook-item-list button.selected {
+  border-color: var(--accent, #23836c);
+  background: #edf7f3;
+  color: #174f40;
+}
+.notebook-attachments {
+  padding: 0;
+  list-style: none;
+}
+.notebook-attachments li {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+.notebook-attachments button {
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+@media (max-width: 800px) {
+  .notebook-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+.notebook-list-page {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.notebook-list-page .notebook-item-list {
+  gap: 0.85rem;
+}
+.notebook-list-page .notebook-item-list > button {
+  padding: 1.1rem 1.3rem;
+  border-radius: 12px;
+  width: 100%;
+}
+.notebook-modal {
+  width: min(720px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  border: 1px solid #dce3e0;
+  border-radius: 16px;
+  padding: 1.5rem;
+  color: inherit;
+  background: white;
+  box-shadow: 0 24px 80px #14282030;
+}
+.notebook-modal::backdrop {
+  background: #10252070;
+}
+.notebook-modal-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+.notebook-modal-heading h2 {
+  margin: 0;
+}
+.notebook-modal .field {
+  margin-bottom: 1rem;
+}
+.notebook-modal textarea {
+  width: 100%;
+}
+.notebook-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+.notebook-modal > .card {
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+@media (max-width: 600px) {
+  .notebook-modal {
+    padding: 1rem;
+  }
 }

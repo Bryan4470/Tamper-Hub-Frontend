@@ -24,6 +24,15 @@ const config = {
     early_stopping: { enabled: true, patience: 10 },
   },
   augmentation: { enabled: true },
+  evaluation: {
+    classification_threshold_by_card_type: {
+      mykadfront: 0.25,
+      mykadback: 0.55,
+      mykadfront_2026: 0.25,
+      mykadback_2026: 0.55,
+    },
+    far_constraint_threshold: 0.002,
+  },
 };
 const collection = (items: unknown[] = []) => ({
   items,
@@ -178,6 +187,41 @@ test("training preflight and submission use the same form values", async ({
     .getByLabel("Output location on server")
     .fill("/mnt5/dataset/tamper/custom-training");
   await page.getByRole("spinbutton", { name: /^Epochs/ }).fill("2");
+  await page.getByText("Evaluation settings", { exact: true }).click();
+  await expect(
+    page.getByLabel("mykadfront tamper threshold", { exact: false }),
+  ).toHaveValue("0.25");
+  await expect(page.getByLabel("FAR constraint (%)")).toHaveValue("0.2");
+  await page
+    .getByLabel("mykadfront tamper threshold", { exact: false })
+    .fill("0.4");
+  await page.getByLabel("FAR constraint (%)").fill("1");
+  await page
+    .getByRole("button", { name: "Reset evaluation to config defaults" })
+    .click();
+  await expect(
+    page.getByLabel("mykadfront tamper threshold", { exact: false }),
+  ).toHaveValue("0.25");
+  await expect(page.getByLabel("FAR constraint (%)")).toHaveValue("0.2");
+  await expect(page.getByRole("spinbutton", { name: /^Epochs/ })).toHaveValue(
+    "2",
+  );
+  await page
+    .getByLabel("mykadfront tamper threshold", { exact: false })
+    .fill("1.1");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(
+    page.getByText("Each tamper threshold must be a number between 0 and 1."),
+  ).toBeVisible();
+  await page
+    .getByLabel("mykadfront tamper threshold", { exact: false })
+    .fill("0.4");
+  await page.getByLabel("FAR constraint (%)").fill("101");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(
+    page.getByText("FAR constraint must be a number between 0% and 100%."),
+  ).toBeVisible();
+  await page.getByLabel("FAR constraint (%)").fill("0.5");
   await page.getByRole("button", { name: "Continue" }).click();
   expect(submitted).toBeUndefined();
   await page.getByRole("button", { name: "Previous" }).click();
@@ -206,7 +250,11 @@ test("training preflight and submission use the same form values", async ({
     test_dataset_ids: [],
     device: "cpu",
     config_yaml: configYaml,
-    overrides: { "training.epochs": 2 },
+    overrides: {
+      "training.epochs": 2,
+      "evaluation.classification_threshold_by_card_type.mykadfront": 0.4,
+      "evaluation.far_constraint_threshold": 0.005,
+    },
   });
 });
 
@@ -1101,6 +1149,8 @@ const fullReport = {
       csv: "test.csv",
       num_samples: 71,
       accuracy: 69 / 71,
+      tp: 69,
+      tn: 0,
       auc_roc: null,
       fn: 2,
       fp: 0,
@@ -1224,6 +1274,29 @@ test("full-result run opens evaluation, error images, CSV summaries, and downloa
     report.getByRole("region", { name: "Image details" }),
   ).toContainText("Applied threshold: 25.00%");
   await report.getByRole("tab", { name: "Per-CSV results" }).click();
+  await expect(report.getByRole("columnheader")).toHaveText([
+    "Input CSV",
+    "Evaluated",
+    "FP",
+    "FN",
+    "TP",
+    "TN",
+    "Accuracy",
+    "Precision",
+    "Recall",
+    "F1",
+    "AUC",
+    "FAR",
+    "FRR",
+  ]);
+  const csvCells = report
+    .getByRole("row")
+    .filter({ hasText: "test.csv" })
+    .getByRole("cell");
+  await expect(csvCells.nth(2)).toHaveText("0");
+  await expect(csvCells.nth(3)).toHaveText("2");
+  await expect(csvCells.nth(4)).toHaveText("69");
+  await expect(csvCells.nth(5)).toHaveText("0");
   await expect(
     report.getByRole("cell", { name: "test.csv", exact: true }),
   ).toBeVisible();
@@ -1579,6 +1652,14 @@ test("saved results epoch tab switches checkpoints and splits without changing t
       json: {
         overall: {},
         warnings: [],
+        datasets: [
+          {
+            csv: isTest ? "test-source.csv" : "validation-source.csv",
+            fn: 4,
+            num_samples: 100,
+            far: isTest ? 0.04 : 0.01,
+          },
+        ],
         cards: [
           {
             card_type: isTest ? "mykadback" : "mykadfront",
@@ -1591,6 +1672,37 @@ test("saved results epoch tab switches checkpoints and splits without changing t
             fn: 1,
           },
         ],
+      },
+    });
+  });
+  await page.route("**/studio-api/v1/runs/epoch_run/image?*", (route) =>
+    route.fulfill({
+      contentType: "image/png",
+      body: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=",
+        "base64",
+      ),
+    }),
+  );
+  await page.route("**/studio-api/v1/runs/epoch_run/table?*", (route) => {
+    const isTest =
+      new URL(route.request().url()).searchParams.get("artifact") ===
+      "test-predictions";
+    return route.fulfill({
+      json: {
+        items: [
+          {
+            _row_index: 0,
+            confusion_cell: "fn",
+            image_path: isTest ? "/test-image.jpg" : "/validation-image.jpg",
+            source_csv: isTest ? "test-source.csv" : "validation-source.csv",
+          },
+        ],
+        columns: ["image_path", "source_csv"],
+        total: 1,
+        unfiltered: 1,
+        offset: 0,
+        limit: 50,
       },
     });
   });
@@ -1656,8 +1768,11 @@ test("saved results epoch tab switches checkpoints and splits without changing t
     page.getByText("Production FAR constraint: not met"),
   ).toBeVisible();
   await expect(
-    page.getByRole("cell", { name: "0.125", exact: true }),
-  ).toBeVisible();
+    page.getByRole("heading", { name: "Validation record for this epoch" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Test datasets for this epoch" }),
+  ).toHaveCount(0);
   const cardTable = page
     .locator("section")
     .filter({
@@ -1693,7 +1808,55 @@ test("saved results epoch tab switches checkpoints and splits without changing t
   await expect(
     cardTable.getByRole("row").filter({ hasText: "mykadfront" }),
   ).toContainText("1.00%");
+  const csvSection = page.getByRole("region", {
+    name: "Per-CSV metrics and predictions",
+  });
+  await expect(
+    csvSection.getByRole("button", {
+      name: "validation-source.csv",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    csvSection.getByRole("heading", { name: "Per-CSV metrics for this epoch" }),
+  ).toBeVisible();
+  await csvSection
+    .getByRole("button", { name: "validation-source.csv", exact: true })
+    .click();
+  await expect(
+    page.getByRole("region", { name: "CSV image viewer" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Predictions for this epoch",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await page
+    .getByLabel("Per-CSV metrics displayed")
+    .selectOption("Confusion matrix");
+  const clicked = page.waitForRequest(
+    (request) =>
+      request.url().includes("/table?") &&
+      new URL(request.url()).searchParams.get("confusion") === "fn",
+  );
+  await page
+    .getByRole("button", { name: "View FN images for validation-source.csv" })
+    .click();
+  expect(new URL((await clicked).url()).searchParams.get("source_csv")).toBe(
+    "validation-source.csv",
+  );
+  await expect(page.getByLabel("Image outcome")).toHaveValue("fn");
   await page.getByLabel("Epoch checkpoint").selectOption("epoch_2");
+  await expect(
+    page.getByRole("region", { name: "CSV image viewer" }),
+  ).toHaveCount(0);
+  await expect(
+    csvSection.getByText("No per-CSV metrics saved for this epoch"),
+  ).toBeVisible();
+  await expect(
+    csvSection.getByText("/validation-image.jpg", { exact: true }),
+  ).toHaveCount(0);
   await expect(
     page.getByText("No saved predictions for card-type metrics", {
       exact: true,
@@ -1703,9 +1866,7 @@ test("saved results epoch tab switches checkpoints and splits without changing t
     page.getByRole("cell", { name: "mykadfront", exact: true }),
   ).toHaveCount(0);
   await expect(page.locator(".epoch-metric-grid")).toContainText("3.00%");
-  await expect(
-    page.getByText("No validation record for this epoch"),
-  ).toBeVisible();
+
   await page.getByLabel("Evaluation split").selectOption("test");
   await expect(page.getByLabel("Epoch checkpoint")).toHaveValue("epoch_1");
   await expect(
@@ -1713,9 +1874,290 @@ test("saved results epoch tab switches checkpoints and splits without changing t
   ).toContainText("4.00%");
   await expect(page.locator(".epoch-metric-grid")).toContainText("4.00%");
   await expect(
-    page.getByRole("cell", { name: "external.csv", exact: true }),
+    page.getByRole("heading", { name: "Test datasets for this epoch" }),
+  ).toHaveCount(0);
+  await expect(
+    csvSection.getByRole("button", { name: "test-source.csv", exact: true }),
   ).toBeVisible();
+  await expect(
+    csvSection.getByText("/validation-image.jpg", { exact: true }),
+  ).toHaveCount(0);
   await page.getByRole("tab", { name: "Results", exact: true }).click();
   await expect(page.getByText("No result files yet")).toBeVisible();
   await expect(page.getByLabel("Epoch checkpoint")).toHaveCount(0);
 });
+
+test("saved result checkpoint selects metrics and epoch opens matching details", async ({
+  page,
+}) => {
+  const run = {
+    id: "linked_run",
+    name: "Linked epochs",
+    kind: "training",
+    status: "completed",
+    directory: "/saved/linked",
+    modified: "2026-10-09",
+    error: "",
+  };
+  const artifacts = ["validation", "test"].map((split) => ({
+    id: split,
+    split,
+    kind: "metrics",
+    label: "Checkpoint summary",
+    filename: `${split}/summary.csv`,
+    derived: false,
+  }));
+  const rows = [
+    { checkpoint: "best_f1", epoch: 46, far: 0.0046 },
+    { checkpoint: "epoch_29", epoch: 29, far: 0.0088 },
+  ];
+  await page.route("**/studio-api/v1/runs", (route) =>
+    route.fulfill({ json: { items: [run], roots: [], warnings: [] } }),
+  );
+  await page.route("**/studio-api/v1/runs/linked_run", (route) =>
+    route.fulfill({
+      json: { run, artifacts, history: [], metrics: {}, warnings: [] },
+    }),
+  );
+  await page.route("**/studio-api/v1/runs/linked_run/table?*", (route) =>
+    route.fulfill({
+      json: {
+        items: rows,
+        columns: ["checkpoint", "epoch", "far"],
+        total: 2,
+        unfiltered: 2,
+        offset: 0,
+        limit: 50,
+      },
+    }),
+  );
+  await page.route("**/studio-api/v1/runs/linked_run/epochs", (route) =>
+    route.fulfill({
+      json: {
+        items: ["validation", "test"].flatMap((split) =>
+          rows.map((row) => ({
+            checkpoint: row.checkpoint,
+            epoch: row.epoch,
+            split,
+            metrics: row,
+            history: [],
+            datasets: [],
+            predictions: [],
+          })),
+        ),
+        warnings: [],
+      },
+    }),
+  );
+  await openPage(page, "Saved results");
+  await page.getByRole("button", { name: /Linked epochs/ }).click();
+  await page.getByRole("button", { name: "epoch_29", exact: true }).click();
+  await expect(
+    page.getByRole("tab", { name: "Results", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await expect(
+    page.getByText("Metrics for epoch_29.", { exact: false }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "29", exact: true }).click();
+  await expect(
+    page.getByRole("tab", { name: "Epoch details" }),
+  ).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByLabel("Epoch checkpoint")).toHaveValue("epoch_29");
+  await expect(
+    page.getByRole("combobox", { name: "Evaluation split", exact: true }),
+  ).toHaveValue("validation");
+  await page.getByRole("tab", { name: "Results", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Result split", exact: true })
+    .selectOption("test");
+  await page.getByRole("button", { name: "46", exact: true }).click();
+  await expect(page.getByLabel("Epoch checkpoint")).toHaveValue("best_f1");
+  await expect(
+    page.getByRole("combobox", { name: "Evaluation split", exact: true }),
+  ).toHaveValue("test");
+});
+
+test("job name can be renamed by double-click and persists after refresh", async ({
+  page,
+}) => {
+  let name = "Original experiment";
+  let updates = 0;
+  const job = () => ({
+    id: "job_rename",
+    name,
+    kind: "inference",
+    status: "succeeded",
+    progress: 1,
+    device: "cpu",
+  });
+  await page.route("**/api/v1/jobs?*", (route) =>
+    route.fulfill({ json: collection([job()]) }),
+  );
+  await page.route("**/api/v1/jobs/job_rename", async (route) => {
+    if (route.request().method() === "PATCH") {
+      name = route.request().postDataJSON().name;
+      updates++;
+    }
+    await route.fulfill({ json: job() });
+  });
+  await openPage(page, "Job monitor");
+  await page.getByRole("button", { name, exact: true }).dblclick();
+  await page.getByLabel("Experiment name").fill("Renamed experiment");
+  await page.getByLabel("Experiment name").press("Enter");
+  await expect(
+    page.getByRole("button", { name: "Renamed experiment", exact: true }),
+  ).toBeVisible();
+  await openPage(page, "Job monitor");
+  await page
+    .getByRole("button", { name: "Renamed experiment", exact: true })
+    .dblclick();
+  await page.getByLabel("Experiment name").fill("Discard this");
+  await page.getByLabel("Experiment name").press("Escape");
+  await expect(
+    page.getByRole("button", { name: "Renamed experiment", exact: true }),
+  ).toBeVisible();
+  expect(updates).toBe(1);
+});
+
+test("registered checkpoint links existing jobs and opens or unlinks them", async ({
+  page,
+}) => {
+  const job = {
+    id: "job_linked",
+    name: "Saved experiment",
+    kind: "inference",
+    status: "succeeded",
+    resource_id: "inference_saved",
+    progress: 1,
+    device: "cpu",
+  };
+  let linked = false;
+  await page.route("**/api/v1/models/model_one/jobs", (route) =>
+    route.fulfill({ json: { items: linked ? [job] : [] } }),
+  );
+  await page.route(
+    "**/api/v1/models/model_one/jobs/job_linked",
+    async (route) => {
+      expect(["POST", "DELETE"]).toContain(route.request().method());
+      linked = route.request().method() === "POST";
+      await route.fulfill({
+        status: linked ? 200 : 204,
+        ...(linked ? { json: model } : {}),
+      });
+    },
+  );
+  await page.route("**/api/v1/jobs?*", (route) =>
+    route.fulfill({ json: collection([job]) }),
+  );
+  await page.route("**/api/v1/jobs/job_linked", (route) =>
+    route.fulfill({ json: job }),
+  );
+  await openPage(page, "Models");
+  const links = page.getByRole("region", {
+    name: "Linked jobs for Baseline model",
+  });
+  await links.getByRole("button", { name: "Add jobs", exact: true }).click();
+  await links
+    .getByRole("combobox", { name: "Choose a job to link" })
+    .selectOption("job_linked");
+  await links.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(
+    links.getByRole("button", { name: "Saved experiment", exact: true }),
+  ).toBeVisible();
+  await expect(
+    links.getByRole("button", { name: "Link Saved experiment", exact: true }),
+  ).toHaveCount(0);
+  await openPage(page, "Models");
+  await links
+    .getByRole("button", { name: "Saved experiment", exact: true })
+    .click();
+  await expect(page.getByRole("heading", { name: "All jobs" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Saved experiment", exact: true }),
+  ).toBeVisible();
+  await page
+    .locator("nav")
+    .getByRole("button", { name: "Models", exact: true })
+    .click();
+  await links
+    .getByRole("button", { name: "Unlink Saved experiment", exact: true })
+    .click();
+  await expect(links.getByText("No linked jobs")).toBeVisible();
+  expect(linked).toBe(false);
+});
+
+for (const kind of ["inference", "training"] as const) {
+  test(`saved ${kind} card deletes its associated job after confirmation`, async ({
+    page,
+  }) => {
+    const run = {
+      id: "saved_delete",
+      name: "Delete example",
+      kind,
+      directory: "/saved/delete-example",
+      status: "completed",
+      modified: "2026-10-09",
+      error: "",
+      ...(kind === "inference" ? { inference_id: "inference_delete" } : {}),
+    };
+    const resource = {
+      id: `${kind}_delete`,
+      job_id: "job_delete",
+      artifact_dir: run.directory,
+    };
+    let deleted = false;
+    await page.route("**/studio-api/v1/runs", (route) =>
+      route.fulfill({
+        json: { items: deleted ? [] : [run], roots: [], warnings: [] },
+      }),
+    );
+    await page.route("**/studio-api/v1/runs/saved_delete", (route) =>
+      route.fulfill({
+        json: { run, artifacts: [], history: [], metrics: {}, warnings: [] },
+      }),
+    );
+    await page.route("**/api/v1/inference-report/saved", (route) =>
+      route.fulfill({ json: { items: [], roots: [], warnings: [] } }),
+    );
+    await page.route("**/api/v1/inference-report?*", (route) =>
+      route.fulfill({ json: fullReport }),
+    );
+    await page.route(`**/api/v1/${kind}-runs/${kind}_delete`, (route) =>
+      route.fulfill({ json: resource }),
+    );
+    await page.route("**/api/v1/training-runs?*", (route) =>
+      route.fulfill({ json: collection([resource]) }),
+    );
+    await page.route("**/api/v1/jobs/job_delete", async (route) => {
+      if (route.request().method() === "DELETE") {
+        deleted = true;
+        await route.fulfill({ status: 204 });
+      } else
+        await route.fulfill({
+          json: { id: "job_delete", status: "succeeded" },
+        });
+    });
+    await openPage(page, "Saved results");
+    await page.getByRole("button", { name: /Delete example/ }).click();
+    const button = page.getByRole("button", {
+      name: "Delete run Delete example",
+      exact: true,
+    });
+    await expect(button).toBeEnabled();
+    page.once("dialog", (dialog) => dialog.dismiss());
+    await button.click();
+    expect(deleted).toBe(false);
+    page.once("dialog", (dialog) => {
+      expect(dialog.message()).toContain("generated results");
+      return dialog.accept();
+    });
+    await button.click();
+    await expect(
+      page.getByRole("heading", { name: "Select a saved run" }),
+    ).toBeVisible();
+    expect(deleted).toBe(true);
+    await expect(
+      page.getByRole("button", { name: /Delete example/ }),
+    ).toHaveCount(0);
+  });
+}

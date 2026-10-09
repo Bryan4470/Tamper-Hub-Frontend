@@ -1,7 +1,20 @@
-import { cardPerformance, checkpointName } from "./cardPerformance.ts";
+import {
+  cardPerformance,
+  checkpointName,
+  sourceCsv,
+  confusionCell,
+} from "./cardPerformance.ts";
 import { createHash } from "node:crypto";
 import { readdir, readFile, realpath, stat } from "node:fs/promises";
-import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
+import {
+  basename,
+  extname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 import { readDatasetDistribution } from "./datasetDistribution.ts";
 import { csvRows } from "./csv.ts";
 import type {
@@ -17,6 +30,7 @@ import type {
 } from "../src/api/studioTypes.ts";
 
 type Roots = {
+  imageRoots?: string[];
   project: string;
   checkpoints: string;
   legacyCheckpoints: string;
@@ -48,6 +62,13 @@ export function studioRoots(env = process.env): Roots {
   );
   return {
     project,
+    imageRoots: (
+      env.TAMPER_STUDIO_IMAGE_ROOTS ||
+      `${project}:/mnt5/dataset:/mnt3/auto-ekyc:/mnt3/dataset/research/idv/idtamper`
+    )
+      .split(":")
+      .filter(Boolean)
+      .map((root) => resolve(root)),
     checkpoints: resolve(
       env.TRAINING_STUDIO_CHECKPOINTS || "/mnt5/dataset/tamper/checkpoints",
     ),
@@ -589,6 +610,10 @@ export function createStudioReader(roots: Roots) {
     };
     const offset = integer("offset", 0, 100000000),
       limit = Math.max(1, integer("limit", 50, 200));
+    const source = query.get("source_csv");
+    const cell = query.get("confusion");
+    if (cell && !["tp", "tn", "fp", "fn", "excluded"].includes(cell))
+      throw new Error("Invalid confusion filter");
     const search = (query.get("q") || "").toLowerCase();
     const outcome = query.get("outcome"),
       card = query.get("card_type");
@@ -596,11 +621,26 @@ export function createStudioReader(roots: Roots) {
       items: ResultRow[] = [];
     let total = 0,
       unfiltered = 0;
+    let rowIndex = -1;
     for await (const raw of rowsFor(run, artifact)) {
+      rowIndex++;
+      unfiltered++;
+      if (source !== null || cell) {
+        const expected = checkpointName(
+          basename(artifact.filename).replace(/\.csv(\.gz)?$/, ""),
+        );
+        const split = String(raw.split || "").replace(/^val$/, "validation");
+        if (
+          (raw.checkpoint && checkpointName(raw.checkpoint) !== expected) ||
+          (split && split !== artifact.split)
+        )
+          continue;
+        if (source !== null && sourceCsv(raw) !== source) continue;
+        if (cell && confusionCell(raw) !== cell) continue;
+      }
       const row =
         artifact.kind === "predictions" ? predictionRow(raw, run) : raw;
       Object.keys(row).forEach((key) => columns.add(key));
-      unfiltered++;
       if (
         search &&
         !Object.values(row).some((value) =>
@@ -615,10 +655,58 @@ export function createStudioReader(roots: Roots) {
         (card && row.card_type !== card)
       )
         continue;
-      if (total >= offset && items.length < limit) items.push(row);
+      if (total >= offset && items.length < limit)
+        items.push(
+          source !== null || cell
+            ? {
+                ...row,
+                _row_index: rowIndex,
+                confusion_cell: confusionCell(raw),
+              }
+            : row,
+        );
       total++;
     }
     return { items, columns: [...columns], total, unfiltered, offset, limit };
+  }
+
+  async function predictionImage(
+    id: string,
+    artifactId: string,
+    index: string,
+  ) {
+    if (!/^\d+$/.test(index) || Number(index) > 100000000)
+      throw new Error("Invalid image index");
+    const run = await runById(id);
+    const artifact = (await artifacts(run)).find(
+      (item) => item.id === artifactId && item.kind === "predictions",
+    );
+    if (!artifact) throw new Error("Saved prediction artifact not found");
+    let position = 0;
+    for await (const row of rowsFor(run, artifact)) {
+      if (position++ !== Number(index)) continue;
+      if (!row.image_path) throw new Error("Image path was not saved");
+      const path = await realpath(String(row.image_path));
+      const imageRoots = await Promise.all(
+        (roots.imageRoots || [roots.project]).map((root) =>
+          realpath(root).catch(() => root),
+        ),
+      );
+      if (!imageRoots.some((root) => inside(root, path)))
+        throw new Error("Image is outside configured image roots");
+      const types: Record<string, string> = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".bmp": "image/bmp",
+      };
+      const contentType = types[extname(path).toLowerCase()];
+      if (!contentType || !(await stat(path)).isFile())
+        throw new Error("Unsupported image file");
+      return { path, contentType };
+    }
+    throw new Error("Saved prediction row not found");
   }
 
   async function downloadPath(id: string, artifactId: string) {
@@ -773,6 +861,7 @@ export function createStudioReader(roots: Roots) {
     checkpoints,
     table,
     downloadPath,
+    predictionImage,
     distribution,
     epochs,
     performance,

@@ -7,7 +7,11 @@ export function Table({
   onRow,
   selected,
 }: {
-  columns: { key: string; label: string; render?: (row: Row) => ReactNode }[];
+  columns: {
+    key: string;
+    label: ReactNode;
+    render?: (row: Row) => ReactNode;
+  }[];
   rows: Row[];
   onRow?: (row: Row) => void;
   selected?: string;

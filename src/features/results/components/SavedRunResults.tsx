@@ -1,5 +1,5 @@
 import { TrainingOverview } from "@/features/results/components/TrainingOverview";
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { endpoints } from "@/api/endpoints";
 import type { SavedRunDetail } from "@/api/studioTypes";
 import type { HubProps } from "@/app/types";
@@ -17,10 +17,14 @@ import { useRemote } from "@/hooks/useRemote";
 
 export function SavedRunResults({
   selected,
+  action,
   go,
   revision,
   act,
-}: Pick<HubProps, "revision" | "act" | "go"> & { selected: string }) {
+}: Pick<HubProps, "revision" | "act" | "go"> & {
+  selected: string;
+  action?: ReactNode;
+}) {
   const detail = useRemote<SavedRunDetail | null>(
     endpoints.studio.detail(selected),
     null,
@@ -28,6 +32,7 @@ export function SavedRunResults({
     30000,
   );
   const [tab, setTab] = useState("Results");
+  const [checkpoint, setCheckpoint] = useState("");
   const tabId = useId();
   const tabs = ["Overview", "Results", "Dataset distribution", "Epoch details"];
   const [split, setSplit] = useState("");
@@ -47,7 +52,7 @@ export function SavedRunResults({
     artifacts.find((item) => item.id === artifactId) || artifacts[0];
   if (data?.run.kind === "inference")
     return (
-      <Card title={data.run.name}>
+      <Card title={data.run.name} action={action}>
         <InferenceReport
           go={go}
           source={{ path: data.run.directory }}
@@ -57,7 +62,7 @@ export function SavedRunResults({
       </Card>
     );
   return (
-    <Card title={data?.run.name || "Saved run details"}>
+    <Card title={data?.run.name || "Saved run details"} action={action}>
       <Notice error>{detail.error}</Notice>
       {detail.loading && <p role="status">Reading saved run…</p>}
       {data && (
@@ -128,6 +133,7 @@ export function SavedRunResults({
                 key={selected}
                 runId={selected}
                 revision={revision}
+                initialCheckpoint={checkpoint}
                 initialSplit={activeSplit === "test" ? "test" : "validation"}
               />
             ) : (
@@ -197,6 +203,11 @@ export function SavedRunResults({
                         artifact={artifact}
                         revision={revision}
                         act={act}
+                        onOpenCheckpoint={(value) => {
+                          setCheckpoint(value);
+                          setTab("Epoch details");
+                          document.getElementById(`${tabId}-3`)?.focus();
+                        }}
                       />
                     )}
                   </>

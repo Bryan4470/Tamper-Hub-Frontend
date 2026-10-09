@@ -395,6 +395,85 @@ The reader accepts `TAMPER_STUDIO_HOST` (local default `127.0.0.1`, container
 `0.0.0.0`) and exposes `/healthz` for readiness checks.
 
 The complete stack is defined in `../face-tamper-multiclass/compose.hub.yaml`;
-GPU access is an optional override. Follow
+GPU access is included in that file. Follow
 [the Docker deployment guide](../../face-tamper-multiclass/README_DOCKER.md).
 Local `npm run dev` still uses the Vite proxy and middleware as before.
+
+### Training evaluation controls
+
+Training step 3 exposes per-card classification thresholds and the FAR constraint
+in a collapsed Evaluation settings section. Defaults come from the selected
+configuration; FAR is displayed as a percentage and submitted as a fraction.
+Reset removes only evaluation overrides. Review shows effective values, and the
+existing API override/config snapshot flow persists them with the run. Inputs are
+checked before advancing or submitting. Training loss behavior is unchanged.
+
+### Epoch CSV metrics and predictions
+
+Epoch details includes a bottom section for per-CSV metrics and saved prediction
+rows. The saved-results reader reuses its existing confusion-count/AUC aggregation
+for each full `source_csv` path, preserving duplicate samples and filtering out
+other checkpoints/splits. Missing denominators remain unavailable. Existing
+per-CSV summaries provide a fallback when predictions were not saved. Prediction
+search, paging, downloads and navigation reuse `SavedArtifactTable`. Switching
+epoch, run or split resets this section's state.
+
+### Epoch image drilldown
+
+Per-CSV names and TP/TN/FP/FN counts open an inline, paginated image viewer for
+that exact source CSV, epoch and evaluation split. The reader shares source
+provenance and prediction classification helpers with the metric aggregation so
+confusion-cell image counts match the table. Images are addressed by saved
+prediction artifact and row index, never by an arbitrary browser-supplied path.
+Real paths must remain under `TAMPER_STUDIO_IMAGE_ROOTS` (by default the project,
+`/mnt5/dataset`, and the two `/mnt3` dataset roots). The reader mounts these roots
+read-only. The old standalone prediction table in Epoch details is removed;
+prediction labels, scores and thresholds appear with each image instead.
+
+## Notebook
+
+`NotebookPage` composes `NotebookEditor`. The Save notes button writes through
+`PUT /studio-api/v1/notebook`; GET loads the shared notebook. The local server
+stores notes at `$TAMPER_API_WORKSPACE/notebook/notes.json`, defaulting to
+`/mnt5/dataset/tamper/tamper_hub/notebook/notes.json`. Back up this directory
+with the workspace. Atomic file replacement prevents partial writes; revisions
+reject stale saves from another browser. Use one reader process for this store.
+The existing same-origin and optional bearer-token checks also protect notebook
+requests. Saved-results endpoints remain read-only.
+
+Browser local storage is only an unsaved-draft fallback. Existing browser notes
+appear automatically when the server notebook is new; click Save notes to migrate.
+If disk notes already exist, Restore browser draft lets you recover local edits
+without automatically overwriting the shared notes.
+
+Development and preview use the Vite middleware; Docker uses the reader service.
+The compose reader mounts only the notebook subdirectory writable. Create that
+directory with ownership matching the service UID before starting containers.
+Rebuild/recreate the reader and web services after this change. Notes survive
+browser data clearing, server restarts, and container recreation on the bind mount.
+
+Notebook items use the reader's same-origin, bearer-protected
+`/studio-api/v1/notebook/items` endpoints. The existing `notes.json` is preserved
+and shown as a “Future updates” item until the first item write migrates the
+content into `notebook/items.json`. Each item has independent notes, a title,
+an optimistic edit revision, and attachment metadata. Files are stored using
+server-generated IDs in `notebook/attachments/`, with a 500 MiB per-file limit,
+and downloaded as attachments through the authenticated reader. The existing
+writable notebook bind mount persists these files across container updates.
+Browser draft recovery is scoped to each notebook item.
+
+Notebook attachment transfers stream to/from disk. Deleting an item removes its
+notes and stored attachments; the UI asks for confirmation before deletion.
+
+The notebook opens on an item list. Add item opens a modal where title, notes,
+and attachments are prepared before Submit. POST item creation accepts optional
+`text` alongside `title`; files then upload to that item. If a file upload fails,
+the modal retains the created item and retries only remaining files. Closing
+after a partial upload keeps the saved item visible. Existing items open in a
+modal with note editing, attachment downloads/uploads, and deletion.
+
+Notebook items optionally store `linkedJobIds` in `notebook/items.json`.
+POST/DELETE `/studio-api/v1/notebook/items/{item_id}/jobs/{job_id}` updates one
+association atomically without changing the note revision or attachments.
+The frontend reads job names through the existing jobs API and navigates to
+Job monitor. Unavailable jobs remain unlinkable; unlinking never deletes a job.

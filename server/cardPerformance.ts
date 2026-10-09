@@ -90,6 +90,55 @@ function metrics(value: Group): ResultRow {
   };
 }
 
+export function sourceCsv(row: ResultRow): string {
+  let originalCsv = row.metadata_source_csv;
+  if (!originalCsv && typeof row.metadata_json === "string") {
+    try {
+      const metadata = JSON.parse(row.metadata_json);
+      if (typeof metadata?.source_csv === "string")
+        originalCsv = metadata.source_csv;
+    } catch {
+      // Legacy malformed metadata falls back to the saved source column.
+    }
+  }
+  return String(
+    originalCsv || row.source_csv || row.csv || "Unknown source CSV",
+  );
+}
+
+export function predictionValues(row: ResultRow) {
+  const truth =
+    binary(row.ground_truth) ??
+    binary(row.ground_truth_index) ??
+    binary(row.fraud_type);
+  const savedPrediction =
+    binary(row.prediction) ?? binary(row.prediction_index);
+  const rawScore = numeric(row.prob_tampered);
+  const score =
+    rawScore !== null && rawScore >= 0 && rawScore <= 1 ? rawScore : null;
+  const rawThreshold = numeric(row.threshold);
+  const threshold =
+    rawThreshold !== null && rawThreshold >= 0 && rawThreshold <= 1
+      ? rawThreshold
+      : null;
+  const prediction =
+    savedPrediction ??
+    (score !== null && threshold !== null ? Number(score >= threshold) : null);
+  return { truth, prediction, score, threshold };
+}
+
+export function confusionCell(row: ResultRow): string {
+  const { truth, prediction } = predictionValues(row);
+  if (truth === null || prediction === null) return "excluded";
+  return truth === 1
+    ? prediction === 1
+      ? "tp"
+      : "fn"
+    : prediction === 1
+      ? "fp"
+      : "tn";
+}
+
 export async function cardPerformance(
   rows: AsyncIterable<ResultRow>,
   checkpoint: string,
@@ -97,6 +146,7 @@ export async function cardPerformance(
 ): Promise<CardPerformance> {
   const overall = group();
   const groups = new Map<string, Group>();
+  const datasets = new Map<string, Group>();
   let mismatched = 0;
   for await (const row of rows) {
     const rowSplit = String(row.split || "").toLowerCase();
@@ -113,26 +163,11 @@ export async function cardPerformance(
         .toLowerCase() || "unknown";
     const value = groups.get(card) || group();
     groups.set(card, value);
-    const truth =
-      binary(row.ground_truth) ??
-      binary(row.ground_truth_index) ??
-      binary(row.fraud_type);
-    const savedPrediction =
-      binary(row.prediction) ?? binary(row.prediction_index);
-    const rawScore = numeric(row.prob_tampered);
-    const score =
-      rawScore !== null && rawScore >= 0 && rawScore <= 1 ? rawScore : null;
-    const rawThreshold = numeric(row.threshold);
-    const threshold =
-      rawThreshold !== null && rawThreshold >= 0 && rawThreshold <= 1
-        ? rawThreshold
-        : null;
-    const prediction =
-      savedPrediction ??
-      (score !== null && threshold !== null
-        ? Number(score >= threshold)
-        : null);
-    for (const target of [overall, value]) {
+    const csv = sourceCsv(row);
+    const dataset = datasets.get(csv) || group();
+    datasets.set(csv, dataset);
+    const { truth, prediction, score, threshold } = predictionValues(row);
+    for (const target of [overall, value, dataset]) {
       target.num_samples++;
       if (truth === null || prediction === null) {
         target.excluded++;
@@ -155,6 +190,9 @@ export async function cardPerformance(
     cards: [...groups]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([card_type, value]) => ({ card_type, ...metrics(value) })),
+    datasets: [...datasets]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([csv, value]) => ({ csv, ...metrics(value) })),
     warnings: mismatched
       ? [
           `Excluded ${mismatched} rows belonging to a different checkpoint or split.`,

@@ -472,3 +472,68 @@ test("legacy epoch text reports retain checkpoint metrics without inventing card
   assert.equal(epoch.predictions.length, 0);
   assert.deepEqual(epoch.history, []);
 });
+
+test("CSV image drilldown matches confusion counts and rejects escaped image paths", async (t) => {
+  const { put, reader } = await fixture(t);
+  await put("checkpoints/images/config.yaml", "training: {}\n");
+  const image = await put(
+    "images/card.jpg",
+    Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+  );
+  const bad = await put("images/escape.jpg", "placeholder");
+  await rm(bad);
+  await symlink("/etc/passwd", bad);
+  const values = [
+    [image, "/mykadfront/a.csv", "tamper", "tamper", "epoch_1", "test"],
+    [image, "/mykadfront/a.csv", "tamper", "genuine", "epoch_1", "test"],
+    [image, "/mykadfront/a.csv", "genuine", "tamper", "epoch_1", "test"],
+    [image, "/mykadfront/a.csv", "genuine", "genuine", "epoch_1", "test"],
+    [image, "/mykadback/a.csv", "tamper", "tamper", "epoch_1", "test"],
+    [bad, "/mykadfront/a.csv", "tamper", "tamper", "epoch_2", "test"],
+  ];
+  await put(
+    "checkpoints/images/eval_results/predictions/epoch_1.csv",
+    "image_path,source_csv,ground_truth,prediction,checkpoint,split\n" +
+      values.map((row) => row.join(",")).join("\n") +
+      "\n",
+  );
+  const run = (await reader.list()).items[0];
+  const artifact = (await reader.detail(run.id)).artifacts.find(
+    (row) => row.kind === "predictions",
+  )!;
+  const all = await reader.table(
+    run.id,
+    artifact.id,
+    new URLSearchParams({ source_csv: "/mykadfront/a.csv", limit: "2" }),
+  );
+  assert.equal(all.total, 4);
+  assert.equal(all.items.length, 2);
+  assert.equal(all.items[1]._row_index, 1);
+  const metrics = await reader.performance(run.id, artifact.id);
+  const csv = metrics.datasets!.find((row) => row.csv === "/mykadfront/a.csv")!;
+  for (const cell of ["tp", "tn", "fp", "fn"]) {
+    const result = await reader.table(
+      run.id,
+      artifact.id,
+      new URLSearchParams({ source_csv: "/mykadfront/a.csv", confusion: cell }),
+    );
+    assert.equal(result.total, csv[cell]);
+    assert.equal(result.items[0].confusion_cell, cell);
+  }
+  assert.equal(
+    (await reader.predictionImage(run.id, artifact.id, "1")).path,
+    image,
+  );
+  await assert.rejects(
+    reader.predictionImage(run.id, artifact.id, "5"),
+    /outside/,
+  );
+  await assert.rejects(
+    reader.predictionImage(run.id, artifact.id, "-1"),
+    /Invalid/,
+  );
+  await assert.rejects(
+    reader.predictionImage(run.id, "unknown", "0"),
+    /not found/,
+  );
+});

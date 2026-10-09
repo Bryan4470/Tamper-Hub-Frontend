@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Empty } from "@/components/ui/Empty";
 import { Notice } from "@/components/ui/Notice";
 import { Status } from "@/components/ui/Status";
+import { JobName } from "@/features/jobs/components/JobName";
 import { JobDetails } from "@/features/jobs/components/JobDetails";
 import { useRemote } from "@/hooks/useRemote";
 import { pct, short } from "@/utils/format";
@@ -50,14 +51,19 @@ export function JobsPage(props: HubProps) {
           <Table
             rows={jobs.data.items}
             selected={selected}
-            onRow={(r) => setSelected(r.id)}
             columns={[
               {
                 key: "name",
                 label: "Experiment / run",
                 render: (r) => (
                   <>
-                    <strong>{r.name || `${r.kind} job`}</strong>
+                    <JobName
+                      id={r.id}
+                      name={r.name || `${r.kind} job`}
+                      onSelect={() => setSelected(r.id)}
+                      act={props.act}
+                      busy={props.busy}
+                    />
                     <small className="subcell">
                       {r.kind} · {short(r.id)}
                     </small>

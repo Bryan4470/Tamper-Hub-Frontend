@@ -11,8 +11,13 @@ export const navigation: [PageName, string, string][] = [
   ["models", "Models", "▣"],
   ["datasets", "Datasets", "▦"],
   ["jobs", "Job monitor", "≡"],
+  ["notebook", "Notebook", "▤"],
 ];
 export const titles: Record<PageName, [string, string]> = {
+  notebook: [
+    "Notebook",
+    "A place for future updates, ideas, and things to revisit.",
+  ],
   gradcam: [
     "Grad-CAM visualization",
     "Explore the image regions contributing to each class decision.",
